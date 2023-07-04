@@ -103,7 +103,7 @@ export class Startup extends React.Component<StartupProps, StartupState> {
                   <div className="startup-left-title">Automancer</div>
                 </div>
                 <div className="startup-left-bar">
-                  <div>Version 3.0</div>
+                  <div>Version 5.0</div>
                   {/* {this.state.fullDisplay && (
                     <div>License no. <code>CF 59 AF 6E</code></div>
                   )} */}
