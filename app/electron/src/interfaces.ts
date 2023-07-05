@@ -1,6 +1,7 @@
 import type { FSWatcher } from 'chokidar';
 import type { IpcMainInvokeEvent } from 'electron';
-import type { DraftEntryId, PythonInstallationRecord } from 'pr1-library';
+import { PythonInstallationRecord } from 'find-python-installations';
+import type { DraftEntryId } from 'pr1-library';
 import type { UnionToIntersection } from 'pr1-shared';
 
 

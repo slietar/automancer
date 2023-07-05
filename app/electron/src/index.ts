@@ -1,6 +1,7 @@
 import 'source-map-support/register';
 
 import electron, { BrowserWindow, dialog, Menu, MenuItemConstructorOptions, session, shell } from 'electron';
+import { findPythonInstallations, getPythonInstallationInfo, PythonInstallationId, PythonInstallationRecord } from 'find-python-installations';
 import { ok as assert } from 'node:assert';
 import crypto from 'node:crypto';
 import fsSync from 'node:fs';
@@ -8,13 +9,13 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { MenuDef, MenuEntryId } from 'pr1';
-import { AppData, BridgeTcp, CertificateFingerprint, DraftEntryId, fsExists, HostSettings, HostSettingsId, PythonInstallationRecord, runCommand, searchForAdvertistedHosts, ServerConfiguration, SocketClientBackend } from 'pr1-library';
+import { AppData, BridgeTcp, CertificateFingerprint, DraftEntryId, fsExists, HostSettings, HostSettingsId, runCommand, searchForAdvertistedHosts, ServerConfiguration, SocketClientBackend } from 'pr1-library';
 import { defer, Lock } from 'pr1-shared';
 import * as uol from 'uol';
 
 import { FileManager } from './file-manager';
 import { HostWindow } from './host';
-import { Disposable, DocumentChange, DraftSkeleton, IPC2d as IPCServer2d } from './interfaces';
+import { Disposable, DraftSkeleton, IPC2d as IPCServer2d } from './interfaces';
 import { rootLogger } from './logger';
 import type { IPCEndpoint } from './shared/preload';
 import { StartupWindow } from './startup';
@@ -233,6 +234,7 @@ export class CoreApplication {
     this.logger.debug(`Running Electron ${process.versions.electron}`);
     this.logger.debug(`Running Chrome ${process.versions.chrome}`);
     this.logger.debug(`Running on platform ${os.platform()} ${os.release()} / ${os.arch()}`);
+    this.logger.debug(`Running debug mode: ${this.debug ? 'yes' : 'no'}`);
 
     await fs.mkdir(this.appLogsDirPath, { recursive: true });
     let appLogFilePath = path.join(this.appLogsDirPath, `${Date.now()}.log`);
@@ -254,7 +256,7 @@ export class CoreApplication {
     });
 
 
-    this.pythonInstallations = await util.findPythonInstallations();
+    this.pythonInstallations = await findPythonInstallations();
 
     await this.electronApp.whenReady();
 
@@ -579,7 +581,7 @@ export class CoreApplication {
       }
 
       let installationPath = result.filePaths[0];
-      let info = await util.getPythonInstallationInfo(installationPath);
+      let info = await getPythonInstallationInfo(installationPath);
 
       if (!info) {
         dialog.showErrorBox('Invalid file', 'This file does not correspond to a valid Python installation.');
@@ -587,7 +589,7 @@ export class CoreApplication {
       }
 
       return {
-        id: installationPath,
+        id: (installationPath as PythonInstallationId),
         info,
         path: installationPath,
         leaf: false,

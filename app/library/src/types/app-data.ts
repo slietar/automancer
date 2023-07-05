@@ -1,4 +1,5 @@
 import { Brand, HostIdentifier } from 'pr1-shared';
+import { PythonInstallation, PythonInstallationId } from 'find-python-installations';
 
 
 export type DraftEntryId = Brand<string, 'DraftEntryId'>;
@@ -8,24 +9,6 @@ export interface DraftEntry {
   entryPath: string;
   name: string | null;
 }
-
-export type PythonVersion = [number, number, number];
-
-export interface PythonInstallation {
-  id: string;
-  leaf: boolean;
-  path: string;
-  info: {
-    architectures: string[] | null;
-    isVirtualEnv: boolean;
-    supportsVirtualEnv: boolean;
-    version: PythonVersion;
-  };
-  symlink: boolean;
-}
-
-export type PythonInstallationId = string;
-export type PythonInstallationRecord = Record<PythonInstallationId, PythonInstallation>;
 
 export interface LocalHostOptions {
   customPythonInstallation: PythonInstallation | null;

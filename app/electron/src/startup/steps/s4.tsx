@@ -1,6 +1,6 @@
 //* Select host type
 
-import { React, Selector } from 'pr1';
+import { Selector } from 'pr1';
 
 import { HostCreatorStepData, HostCreatorStepProps } from '../host-creator';
 
@@ -30,13 +30,7 @@ export function Component(props: HostCreatorStepProps<Data>) {
 
             customPythonInstallation: null,
             label: props.context.computerName,
-            pythonInstallationSettings: pythonInstallationId
-              ? {
-                architecture: '_auto',
-                id: pythonInstallationId,
-                virtualEnv: false
-              }
-              : null
+            pythonInstallationSettings: null
           });
 
           break;

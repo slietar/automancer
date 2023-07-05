@@ -24,13 +24,13 @@
   "dependencies": {
     "chokidar": "^3.5.3",
     "electron-squirrel-startup": "^1.0.0",
+    "find-python-installations": "^0.1.0",
     "pr1": "file:../../client",
     "pr1-library": "file:../library",
     "pr1-shared": "file:../shared",
     "seq-ord": "^0.2.0",
     "source-map-support": "^0.5.21",
-    "uol": "^0.2.0",
-    "which": "^2.0.2"
+    "uol": "^0.2.0"
   },
   "devDependencies": {
     "@electron-forge/cli": "^6.0.0",
@@ -38,7 +38,6 @@
     "@electron-forge/maker-zip": "^6.0.0",
     "@types/react": "^18.2.13",
     "@types/react-dom": "^18.2.6",
-    "@types/which": "^2.0.1",
     "electron": "^25.0.0",
     "electron-packager-languages": "^0.5.0",
     "esbuild": "~0.15.16",

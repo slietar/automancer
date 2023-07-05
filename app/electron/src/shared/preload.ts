@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { PythonInstallation } from 'find-python-installations';
 import type { MenuDef, MenuEntryPathLike } from 'pr1';
-import type { AdvertisedHostInfo, BridgeTcp, CertificateFingerprint, DraftEntryId, HostSettingsId, HostSettingsRecord, LocalHostOptions, PythonInstallation, TcpHostOptions, TcpHostOptionsCandidate } from 'pr1-library';
+import type { AdvertisedHostInfo, BridgeTcp, CertificateFingerprint, DraftEntryId, HostSettingsId, HostSettingsRecord, LocalHostOptions, TcpHostOptions, TcpHostOptionsCandidate } from 'pr1-library';
 import type { ClientProtocol, HostIdentifier, ServerProtocol } from 'pr1-shared';
 
 import type { DocumentChange, DraftSkeleton, HostCreatorContext } from '../interfaces';

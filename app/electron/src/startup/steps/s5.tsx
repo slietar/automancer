@@ -1,9 +1,11 @@
 //* Enter local host settings
 
-import { Form, React } from 'pr1';
-import { LocalHostOptions, PythonInstallation, PythonInstallationId } from 'pr1-library';
+import { Form } from 'pr1';
+import { LocalHostOptions } from 'pr1-library';
+import { PythonInstallation, PythonInstallationId } from 'find-python-installations';
 
 import { HostCreatorStepData, HostCreatorStepProps } from '../host-creator';
+import { createRef, useEffect } from 'react';
 
 
 export interface Data extends HostCreatorStepData {
@@ -18,44 +20,58 @@ export interface Data extends HostCreatorStepData {
   } | null;
 }
 
-export function Component(props: HostCreatorStepProps<Data>) {
-  let firstInputRef = React.createRef<HTMLInputElement>();
 
-  React.useEffect(() => {
-    firstInputRef.current!.select();
+export function Component(props: HostCreatorStepProps<Data>) {
+  let firstInputRef = createRef<HTMLInputElement>();
+
+  useEffect(() => {
+    firstInputRef.current?.select();
   }, []);
 
-  let createSelectOptionFromPythonInstallation = (pythonInstallation: PythonInstallation) => ({
-    id: pythonInstallation.path,
-    label: `${pythonInstallation.path} (${[
-      pythonInstallation.info.version.join('.'),
-      ...(pythonInstallation.info.isVirtualEnv ? ['virtual environment'] : [])
-    ].join(', ')})`
-  });
+  let currentSettings = props.data.pythonInstallationSettings;
 
-  let pythonInstallation = props.data.customPythonInstallation ?? (
-    props.data.pythonInstallationSettings
-      ? props.context.pythonInstallations[props.data.pythonInstallationSettings.id]
-      : null
-  );
+  let selectPythonInstallation = (selectedPythonInstallation: PythonInstallation) => {
+    props.setData({
+      ...props.data,
+      customPythonInstallation: !(selectedPythonInstallation.id in props.context.pythonInstallations)
+        ? selectedPythonInstallation
+        : null,
+      pythonInstallationSettings: {
+        id: selectedPythonInstallation.id,
+        architecture: currentSettings && selectedPythonInstallation.info.architectures && selectedPythonInstallation.info.architectures.includes(currentSettings.architecture)
+          ? currentSettings.architecture
+          : '_auto',
+        virtualEnv: ((currentSettings?.virtualEnv ?? true) && selectedPythonInstallation.info.supportsVirtualEnv) || selectedPythonInstallation.info.isVirtualEnv
+      }
+    });
+  };
+
+  if (!currentSettings) {
+    let selectedPythonInstallation = Object.values(props.context.pythonInstallations).find((pythonInstallation) => isPythonInstallationSupported(pythonInstallation));
+
+    if (selectedPythonInstallation) {
+      selectPythonInstallation(selectedPythonInstallation);
+      return null;
+    }
+  }
 
   return (
     <form className="startup-editor-contents" onSubmit={(event) => {
       event.preventDefault();
 
-      let installationSettings = props.data.pythonInstallationSettings!;
+      let installationSettings = currentSettings!;
 
-      let options = {
+      let options: LocalHostOptions = {
         customPythonInstallation: props.data.customPythonInstallation,
         label: props.data.label.trim(),
         pythonInstallationSettings: {
-          architecture: installationSettings.architecture !== '_auto'
+          architecture: (installationSettings.architecture !== '_auto')
             ? installationSettings.architecture
             : null,
           id: installationSettings.id,
           virtualEnv: installationSettings.virtualEnv
         }
-      } satisfies LocalHostOptions;
+      };
 
       props.setData({
         stepIndex: 6,
@@ -76,97 +92,84 @@ export function Component(props: HostCreatorStepProps<Data>) {
           <Form.Select
             label="Python location"
             onInput={(optionId) => {
-              if (optionId === '_custom') {
-                (async () => {
+              (async () => {
+                if (optionId === '_custom') {
                   let customPythonInstallation = await window.api.hostSettings.selectPythonInstallation();
 
                   if (customPythonInstallation) {
-                    props.setData({
-                      ...props.data,
-                      customPythonInstallation: !(customPythonInstallation.id in props.context.pythonInstallations)
-                        ? customPythonInstallation
-                        : null,
-                      pythonInstallationSettings: {
-                        architecture: '_auto',
-                        id: customPythonInstallation.id,
-                        virtualEnv: false
-                      }
-                    });
+                    selectPythonInstallation(customPythonInstallation);
                   }
-                })();
-              } else {
-                props.setData({
-                  ...props.data,
-                  customPythonInstallation: null,
-                  pythonInstallationSettings: {
-                    architecture: '_auto',
-                    id: optionId!,
-                    virtualEnv: false
-                  }
-                });
-              }
+                } else {
+                  selectPythonInstallation(props.context.pythonInstallations[optionId as PythonInstallationId]);
+                }
+              })();
             }}
             options={[
-              { id: '_header.main', label: 'Main locations', disabled: true },
+              ...(!currentSettings
+                ? [{ id: null, label: 'Select a Python location\u2026' }]
+                : []),
+              { id: '_header.main', label: '[Common locations]', disabled: true },
               ...Object.values(props.context.pythonInstallations)
                 .filter((pythonInstallation) => pythonInstallation.leaf)
                 .map(createSelectOptionFromPythonInstallation),
-              { id: '_header.others', label: 'Other locations', disabled: true },
+              { id: '_header.others', label: '[Other locations]', disabled: true },
               ...Object.values(props.context.pythonInstallations)
                 .filter((pythonInstallation) => !pythonInstallation.leaf)
                 .map(createSelectOptionFromPythonInstallation),
-              { id: '_header.custom', label: 'Custom locations', disabled: true },
+              { id: '_header.custom', label: '[Custom locations]', disabled: true },
               ...(props.data.customPythonInstallation
                 ? [createSelectOptionFromPythonInstallation(props.data.customPythonInstallation)]
                 : []),
               { id: '_custom', label: 'Custom location' }
             ]}
-            value={props.data.pythonInstallationSettings?.id ?? null} />
-          <Form.Select
-            label="Architecture"
-            onInput={(architecture) => void props.setData({
-              ...props.data,
-              pythonInstallationSettings: {
-                ...props.data.pythonInstallationSettings!,
-                architecture
-              }
-            })}
-            options={[
-              { id: '_auto', label: 'Automatic' },
-              ...(pythonInstallation?.info.architectures?.map((architecture) => ({
-                id: architecture,
-                label: architecture
-              })) ?? [])
-            ]}
-            disabled={!pythonInstallation}
-            value={props.data.pythonInstallationSettings?.architecture ?? '_'} />
-          <Form.CheckboxList label="Virtual environment">
-            {/* <pre>{JSON.stringify(pythonInstallation?.info, null, 2)}</pre>
-            <pre>{JSON.stringify(props.data, null, 2)}</pre> */}
-            <Form.Checkbox
-              checked={pythonInstallation?.info.supportsVirtualEnv && (props.data.pythonInstallationSettings?.virtualEnv || pythonInstallation.info.isVirtualEnv)}
-              disabled={!pythonInstallation || pythonInstallation.info.isVirtualEnv || !pythonInstallation.info.supportsVirtualEnv}
-              label="Create a virtual environment"
-              onInput={(value) => void props.setData({
-                ...props.data,
-                pythonInstallationSettings: {
-                  ...props.data.pythonInstallationSettings!,
-                  virtualEnv: value
-                }
-              })}>
-              {!pythonInstallation?.info.supportsVirtualEnv && (
-                <p>Virtual environments are not supported in this Python installation. Install venv to add their support.</p>
-              )}
-              {pythonInstallation?.info.isVirtualEnv && (
-                <p>This installation is already a virtual environment.</p>
-              )}
-            </Form.Checkbox>
-          </Form.CheckboxList>
-          {/* <Form.Select
-            label="Data location"
-            onInput={() => {}}
-            options={[]}
-            value={null} /> */}
+            value={currentSettings?.id ?? null} />
+          {currentSettings && (() => {
+            let currentPythonInstallation = props.data.customPythonInstallation ?? props.context.pythonInstallations[currentSettings.id];
+
+            return (
+              <>
+                <Form.Select
+                  label="Architecture"
+                  onInput={(architecture) => void props.setData({
+                    ...props.data,
+                    pythonInstallationSettings: {
+                      ...currentSettings!,
+                      architecture
+                    }
+                  })}
+                  options={[
+                    { id: '_auto', label: 'Automatic' },
+                    ...(currentPythonInstallation.info.architectures?.map((architecture) => ({
+                      id: architecture,
+                      label: architecture
+                    })) ?? [])
+                  ]}
+                  value={currentSettings.architecture} />
+                <Form.CheckboxList label="Virtual environment">
+                  {/* <pre>{JSON.stringify(pythonInstallation?.info, null, 2)}</pre>
+                <pre>{JSON.stringify(props.data, null, 2)}</pre> */}
+                  <Form.Checkbox
+                    checked={currentSettings.virtualEnv}
+                    disabled={currentPythonInstallation.info.isVirtualEnv || !currentPythonInstallation.info.supportsVirtualEnv}
+                    label="Create a virtual environment"
+                    onInput={(value) => void props.setData({
+                      ...props.data,
+                      pythonInstallationSettings: {
+                        ...currentSettings!,
+                        virtualEnv: value
+                      }
+                    })}>
+                    {!currentPythonInstallation.info.supportsVirtualEnv && (
+                      <p>Virtual environments are not supported in this Python installation. Install venv to add their support.</p>
+                    )}
+                    {currentPythonInstallation.info.isVirtualEnv && (
+                      <p>This installation is already a virtual environment.</p>
+                    )}
+                  </Form.Checkbox>
+                </Form.CheckboxList>
+              </>
+            );
+          })()}
         </div>
       </div>
       <div className="startup-editor-action-root">
@@ -179,9 +182,29 @@ export function Component(props: HostCreatorStepProps<Data>) {
           }}>Back</button>
         </div>
         <div className="startup-editor-action-list">
-          <button type="submit" className="startup-editor-action-item" disabled={!pythonInstallation || !props.data.label.trim()}>Next</button>
+          <button type="submit" className="startup-editor-action-item" disabled={!currentSettings || !props.data.label.trim()}>Next</button>
         </div>
       </div>
     </form>
   );
+}
+
+
+function createSelectOptionFromPythonInstallation(pythonInstallation: PythonInstallation) {
+  let info = pythonInstallation.info;
+  let supported = isPythonInstallationSupported(pythonInstallation);
+
+  return {
+    id: (pythonInstallation.id as string),
+    disabled: !supported,
+    label: `${pythonInstallation.path} (${[
+      info.version.join('.'),
+      ...(info.isVirtualEnv ? ['virtual environment'] : [])
+    ].join(', ')})${supported ? '' : ' \u2014 Not supported'}`
+  };
+}
+
+function isPythonInstallationSupported(pythonInstallation: PythonInstallation) {
+  let version = pythonInstallation.info.version;
+  return (version[0] === 3) && (version[1] >= 11);
 }
