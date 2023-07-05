@@ -1,11 +1,12 @@
 //* Enter local host settings
 
+import { PythonInstallation, PythonInstallationId } from 'find-python-installations';
 import { Form } from 'pr1';
 import { LocalHostOptions } from 'pr1-library';
-import { PythonInstallation, PythonInstallationId } from 'find-python-installations';
+import { createRef, useEffect } from 'react';
+import seqOrd from 'seq-ord';
 
 import { HostCreatorStepData, HostCreatorStepProps } from '../host-creator';
-import { createRef, useEffect } from 'react';
 
 
 export interface Data extends HostCreatorStepData {
@@ -111,10 +112,12 @@ export function Component(props: HostCreatorStepProps<Data>) {
               { id: '_header.main', label: '[Common locations]', disabled: true },
               ...Object.values(props.context.pythonInstallations)
                 .filter((pythonInstallation) => pythonInstallation.leaf)
+                .sort(sortPythonInstallations)
                 .map(createSelectOptionFromPythonInstallation),
               { id: '_header.others', label: '[Other locations]', disabled: true },
               ...Object.values(props.context.pythonInstallations)
                 .filter((pythonInstallation) => !pythonInstallation.leaf)
+                .sort(sortPythonInstallations)
                 .map(createSelectOptionFromPythonInstallation),
               { id: '_header.custom', label: '[Custom locations]', disabled: true },
               ...(props.data.customPythonInstallation
@@ -208,3 +211,10 @@ function isPythonInstallationSupported(pythonInstallation: PythonInstallation) {
   let version = pythonInstallation.info.version;
   return (version[0] === 3) && (version[1] >= 11);
 }
+
+const sortPythonInstallations = seqOrd<PythonInstallation>(function* (a, b, rules) {
+  yield rules.numeric(b.info.version[0], a.info.version[0]);
+  yield rules.numeric(b.info.version[1], a.info.version[1]);
+  yield rules.numeric(b.info.version[2], a.info.version[2]);
+  yield rules.text(a.path, b.path);
+});
