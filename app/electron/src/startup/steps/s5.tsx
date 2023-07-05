@@ -3,7 +3,7 @@
 import { PythonInstallation, PythonInstallationId } from 'find-python-installations';
 import { Form } from 'pr1';
 import { LocalHostOptions } from 'pr1-library';
-import { createRef, useEffect } from 'react';
+import { useCallback } from 'react';
 import seqOrd from 'seq-ord';
 
 import { HostCreatorStepData, HostCreatorStepProps } from '../host-creator';
@@ -23,12 +23,6 @@ export interface Data extends HostCreatorStepData {
 
 
 export function Component(props: HostCreatorStepProps<Data>) {
-  let firstInputRef = createRef<HTMLInputElement>();
-
-  useEffect(() => {
-    firstInputRef.current?.select();
-  }, []);
-
   let currentSettings = props.data.pythonInstallationSettings;
 
   let selectPythonInstallation = (selectedPythonInstallation: PythonInstallation) => {
@@ -89,7 +83,7 @@ export function Component(props: HostCreatorStepProps<Data>) {
             label="Setup name"
             onInput={(label) => void props.setData({ ...props.data, label })}
             value={props.data.label}
-            targetRef={firstInputRef} />
+            targetRef={useCallback((el: HTMLInputElement | null) => void el?.select(), [])} />
           <Form.Select
             label="Python location"
             onInput={(optionId) => {

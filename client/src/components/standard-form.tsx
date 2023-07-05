@@ -203,7 +203,9 @@ export function TextField(props: {
   return (
     <label className={formStyles.fieldControl}>
       <div className={formStyles.fieldLabel}>{props.label}</div>
-      <input type="text" className={formStyles.fieldTextfield}
+      <input
+        type="text"
+        className={formStyles.fieldTextfield}
         placeholder={props.placeholder}
         onBlur={props.onBlur}
         onInput={props.onInput && ((event) => void props.onInput!(event.currentTarget.value))}
