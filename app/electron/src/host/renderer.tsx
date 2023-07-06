@@ -58,7 +58,12 @@ export class App extends Component<AppProps, AppState> {
             local: true
           }}
           onHostStarted={() => {
-            window.api.main.ready();
+            this.pool.add(async () => {
+              await document.fonts.load('12px Material Symbols Rounded');
+              await document.fonts.load('12px Material Symbols Sharp');
+
+              window.api.main.ready();
+            });
           }} />
       </NativeContextMenuProvider>
     );

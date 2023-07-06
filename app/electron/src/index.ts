@@ -454,10 +454,20 @@ export class CoreApplication {
       let hostDirPath = path.join(this.hostsDirPath, hostSettingsId);
       let envPath = path.join(hostDirPath, 'env');
 
-      let architecture = options.pythonInstallationSettings.architecture;
       let pythonPath = pythonInstallation.path;
+      let architecture = options.pythonInstallationSettings.architecture ?? (
+        (process.platform === 'darwin')
+          ? pythonInstallation.info.architectures!.find((architecture) =>
+            ({
+              'arm64': ['arm64', 'arm64e'],
+              'x64': ['x86_64']
+            })[process.arch as ('arm64' | 'x64')].includes(architecture)
+          ) ?? null
+          : null
+      );
 
       this.logger.info(`Creating local host with settings id '${hostSettingsId}'`);
+      this.logger.debug(`Using architecture '${architecture}'`);
       this.logger.debug('Creating host directory');
 
       let conf;
@@ -478,8 +488,8 @@ export class CoreApplication {
           await runCommand([pythonPath, '-m', 'pip', 'install', 'pip-tools~=6.13.0'], { architecture, timeout: (5 * 60e3) });
 
           this.logger.debug('Installing dependencies');
-          await runCommand([pythonPath, '-m', 'piptools', 'compile'], { architecture, cwd: hostDirPath, timeout: 60e3 });
-          await runCommand([pythonPath, '-m', 'piptools', 'sync'], { architecture, cwd: hostDirPath, timeout: (5 * 60e3) });
+          await runCommand([pythonPath, '-m', 'piptools', 'compile', '--rebuild'], { architecture, cwd: hostDirPath, timeout: 60e3 });
+          await runCommand([pythonPath, '-m', 'piptools', 'sync', '--pip-args', '--no-cache-dir'], { architecture, cwd: hostDirPath, timeout: (5 * 60e3) });
         }
 
         this.logger.debug('Initializing host configuration');
