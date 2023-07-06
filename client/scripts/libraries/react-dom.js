@@ -1,3 +1,4 @@
 export {
-  createPortal
+  createPortal,
+  flushSync
 } from 'react-dom';

@@ -171,7 +171,9 @@
       background-color: #eee;
       border-radius: 4px;
 
-      @include icon();
+      :global(.icon) {
+        @include icon();
+      }
     }
   }
 }

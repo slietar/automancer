@@ -1,0 +1,45 @@
+@use "sass:math";
+@use "../mixins" as *;
+
+
+$horizontal-padding: 1rem;
+
+
+.Tooltip {
+  display: flex;
+
+  .core {
+    display: flex;
+    justify-content: center;
+
+    margin: 0 auto;
+    padding: 0.4rem $horizontal-padding;
+
+    background-color: rgba(#000, 80%);
+    backdrop-filter: blur(4px);
+    border-radius: 16px;
+
+    animation: TooltipAppearCore 150ms;
+    overflow: hidden;
+  }
+
+  .text {
+    flex-shrink: 0;
+    color: #fff;
+  }
+}
+
+.TooltipTarget {
+  width: fit-content;
+}
+
+@keyframes TooltipAppearCore {
+  from {
+    width: $horizontal-padding * 2;
+    opacity: 0;
+  }
+
+  to {
+    width: 100%;
+  }
+}

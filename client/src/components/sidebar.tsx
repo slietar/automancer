@@ -8,10 +8,12 @@ import type { Host } from '../host';
 import { HostInfo } from '../interfaces/host';
 import * as util from '../util';
 import { ContextMenuArea } from './context-menu-area';
+import { Icon } from './icon';
 import { StaticSelect } from './static-select';
+import { Tooltip } from './tooltip';
 
 
-const CollapsedStorageKey = 'sidebarCollapsed';
+const COLLAPSE_STORAGE_KEY = 'sidebarCollapsed';
 
 
 export interface SidebarProps {
@@ -36,7 +38,7 @@ export class Sidebar extends Component<SidebarProps, SidebarState> {
     let manualCollapseControl;
 
     try {
-      collapsed = JSON.parse(window.sessionStorage[CollapsedStorageKey]);
+      collapsed = JSON.parse(window.sessionStorage[COLLAPSE_STORAGE_KEY]);
       manualCollapseControl = true;
     } catch (_err) {
       collapsed = false;
@@ -59,7 +61,7 @@ export class Sidebar extends Component<SidebarProps, SidebarState> {
       let newRect = entries[0].contentRect;
 
       if ((newRect.width < AUTO_COLLAPSE_LOWER_WIDTH) && !this.state.collapsed && (!this.state.manualCollapseControl || (rect.width > AUTO_COLLAPSE_LOWER_WIDTH))) {
-        window.sessionStorage[CollapsedStorageKey] = JSON.stringify(true);
+        window.sessionStorage[COLLAPSE_STORAGE_KEY] = JSON.stringify(true);
 
         this.setState({
           collapsed: true,
@@ -68,7 +70,7 @@ export class Sidebar extends Component<SidebarProps, SidebarState> {
       }
 
       if ((newRect.width > AUTO_COLLAPSE_UPPER_WIDTH) && this.state.collapsed && (!this.state.manualCollapseControl || (rect.width < AUTO_COLLAPSE_UPPER_WIDTH))) {
-        window.sessionStorage[CollapsedStorageKey] = JSON.stringify(false);
+        window.sessionStorage[COLLAPSE_STORAGE_KEY] = JSON.stringify(false);
 
         this.setState({
           collapsed: false,
@@ -129,26 +131,6 @@ export class Sidebar extends Component<SidebarProps, SidebarState> {
         ...(pluginEntries && (pluginEntries?.length > 0)
           ? [{ id: 'unit', entries: pluginEntries }]
           : []),
-//         { id: 'last',
-//           entries: [
-//             { id: 'conf',
-//               label: 'Settings',
-//               icon: 'settings',
-//               route: '/settings' },
-// /*             { id: 'design',
-//               label: 'Design',
-//               icon: 'design_services',
-//               route: '/design' }, */
-//             ...(this.props.setStartup
-//                 ? [{
-//                   id: 'startup',
-//                   label: 'Start menu',
-//                   icon: 'home',
-//                   route: null,
-//                   onClick: () => void this.props.setStartup?.()
-//                 }]
-//                 : [])
-//           ] }
       ]
       : [];
 
@@ -170,7 +152,7 @@ export class Sidebar extends Component<SidebarProps, SidebarState> {
             ];
           })
         ]}
-        onSelect={() => {}}>
+        onSelect={() => { }}>
         <aside className={util.formatClass(styles.root, { [styles.rootCollapsed]: this.state.collapsed })}>
           <div className={styles.headerRoot}>
             {/* {(hostSettingsRecord.length > 0) && (
@@ -205,21 +187,23 @@ export class Sidebar extends Component<SidebarProps, SidebarState> {
               <div className={styles.navGroup} key={group.id}>
                 {group.entries.map((entry) => {
                   return (
-                    <a
-                      href={BaseUrl + (entry.route ?? '#')}
-                      className={util.formatClass(styles.navEntryRoot, {
-                        '_selected': url.startsWith(BaseUrl + entry.route)
-                      })}
-                      key={entry.id}
-                      onClick={entry.onClick && ((event) => {
-                        event.preventDefault();
-                        entry.onClick!();
-                      })}>
-                      <div className={styles.navEntryIcon}>
-                        <div className="material-symbols-sharp">{entry.icon}</div>
-                      </div>
-                      <div className={styles.navEntryLabel}>{entry.label}</div>
-                    </a>
+                    <Tooltip contents={entry.label} enabled={this.state.collapsed} placement="right">
+                      <a
+                        href={BaseUrl + (entry.route ?? '#')}
+                        className={util.formatClass(styles.navEntryRoot, {
+                          '_selected': url.startsWith(BaseUrl + entry.route)
+                        })}
+                        key={entry.id}
+                        onClick={entry.onClick && ((event) => {
+                          event.preventDefault();
+                          entry.onClick!();
+                        })}>
+                        <div className={styles.navEntryIcon}>
+                          <Icon name={entry.icon} />
+                        </div>
+                        <div className={styles.navEntryLabel}>{entry.label}</div>
+                      </a>
+                    </Tooltip>
                   );
                 })}
               </div>
@@ -227,19 +211,21 @@ export class Sidebar extends Component<SidebarProps, SidebarState> {
           </nav>
           <div className={styles.navRoot}>
             <div className={styles.navGroup}>
-              <button type="button" className={util.formatClass(styles.navEntryRoot)} onClick={() => {
-                let collapsed = !this.state.collapsed;
-                window.sessionStorage[CollapsedStorageKey] = JSON.stringify(collapsed);
-                this.setState({
-                  collapsed,
-                  manualCollapseControl: true
-                });
-              }}>
-                <div className={styles.navEntryIcon}>
-                  <div className="material-symbols-sharp">{this.state.collapsed ? 'keyboard_double_arrow_right' : 'keyboard_double_arrow_left'}</div>
-                </div>
-                {/* <div className={styles.navEntryLabel}>Collapse</div> */}
-              </button>
+              <Tooltip contents="Expand" enabled={this.state.collapsed} placement="right">
+                <button type="button" className={util.formatClass(styles.navEntryRoot)} onClick={() => {
+                  let collapsed = !this.state.collapsed;
+                  window.sessionStorage[COLLAPSE_STORAGE_KEY] = JSON.stringify(collapsed);
+                  this.setState({
+                    collapsed,
+                    manualCollapseControl: true
+                  });
+                }}>
+                  <div className={styles.navEntryIcon}>
+                    <div className="material-symbols-sharp">{this.state.collapsed ? 'keyboard_double_arrow_right' : 'keyboard_double_arrow_left'}</div>
+                  </div>
+                  {/* <div className={styles.navEntryLabel}>Collapse</div> */}
+                </button>
+              </Tooltip>
             </div>
           </div>
         </aside>
