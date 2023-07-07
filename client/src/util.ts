@@ -73,6 +73,14 @@ export function usePrevious<T>(value: T): T | undefined {
   return ref.current;
 }
 
+export function useFromPreviousRender<T>(value: T): T | undefined {
+  let ref = useRef<T>();
+  let previousValue = ref.current;
+
+  ref.current = value;
+  return previousValue;
+}
+
 export function useForceUpdate() {
   let [_, setValue] = useState(0);
   return () => void setValue(value => value + 1);

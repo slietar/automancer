@@ -1,0 +1,71 @@
+@use "../constants" as *;
+@use "../mixins" as *;
+
+
+.PopoverTarget {
+  display: flex;
+  width: 32px;
+  height: 32px;
+
+  background-color: #fafafa;
+  border-radius: 4px;
+
+  &:hover {
+    background-color: #eee;
+  }
+
+  .Icon {
+    @include icon();
+    margin: auto;
+  }
+}
+
+
+.Popover {
+  min-width: 250px;
+  padding: 8px;
+
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+
+  line-height: 1.2;
+  box-shadow: 3px 3px 6px rgba(#000, 10%);
+
+  .arrow {
+    @layer reset {
+      all: revert-layer;
+    }
+  }
+
+  .title {
+    display: none;
+    margin-bottom: 0.4em;
+    font-weight: 500;
+  }
+
+  .actions {
+    display: flex;
+    flex-direction: column;
+    row-gap: 4px;
+
+    .item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 8px;
+      border-radius: 4px;
+
+      .text {
+        // font-weight: 500;
+      }
+
+      &:hover {
+        background-color: #ebf1f3;
+      }
+
+      &:focus-visible {
+        box-shadow: $highlight-shadow;
+      }
+    }
+  }
+}

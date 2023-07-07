@@ -13,12 +13,14 @@ import {
 } from '@floating-ui/react';
 import { PropsWithChildren, ReactNode, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useFromPreviousRender } from '../util';
 
 
 export function Tooltip(props: PropsWithChildren<{
   contents: ReactNode;
   enabled?: unknown;
   placement?: Placement;
+  state?: number | null;
 }>) {
   let [isOpen, setIsOpen] = useState(false);
 
@@ -42,6 +44,13 @@ export function Tooltip(props: PropsWithChildren<{
       setIsOpen(false);
     }
   }, [props.enabled]);
+
+  let oldState = useFromPreviousRender(props.state);
+
+  if (props.state !== oldState) {
+    setIsOpen(false);
+    return null;
+  }
 
   return (
     <>

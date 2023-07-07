@@ -8,8 +8,11 @@
 
   padding: 100px 20px;
 
+  animation: Modal-Appear 200ms;
+
   &::backdrop {
     background-color: #0003;
+    animation: ModalBackdrop-Appear 200ms;
   }
 }
 
@@ -26,5 +29,18 @@
 
   > * > :last-child {
     margin-top: 2rem;
+  }
+}
+
+
+@keyframes ModalBackdrop-Appear {
+  from {
+    background-color: transparent;
+  }
+}
+
+@keyframes Modal-Appear {
+  from {
+    translate: 0 -24px;
   }
 }

@@ -187,13 +187,12 @@ export class Sidebar extends Component<SidebarProps, SidebarState> {
               <div className={styles.navGroup} key={group.id}>
                 {group.entries.map((entry) => {
                   return (
-                    <Tooltip contents={entry.label} enabled={this.state.collapsed} placement="right">
+                    <Tooltip contents={entry.label} enabled={this.state.collapsed} placement="right" key={entry.id}>
                       <a
                         href={BaseUrl + (entry.route ?? '#')}
                         className={util.formatClass(styles.navEntryRoot, {
                           '_selected': url.startsWith(BaseUrl + entry.route)
                         })}
-                        key={entry.id}
                         onClick={entry.onClick && ((event) => {
                           event.preventDefault();
                           entry.onClick!();
@@ -211,7 +210,10 @@ export class Sidebar extends Component<SidebarProps, SidebarState> {
           </nav>
           <div className={styles.navRoot}>
             <div className={styles.navGroup}>
-              <Tooltip contents="Expand" enabled={this.state.collapsed} placement="right">
+              <Tooltip
+                contents={`${this.state.collapsed ? 'Expand' : 'Collapse'} sidebar`}
+                placement="right"
+                state={this.state.collapsed ? 1 : 0}>
                 <button type="button" className={util.formatClass(styles.navEntryRoot)} onClick={() => {
                   let collapsed = !this.state.collapsed;
                   window.sessionStorage[COLLAPSE_STORAGE_KEY] = JSON.stringify(collapsed);

@@ -19,6 +19,7 @@ export const Icon = React.memo(function Icon(props: {
       className={util.formatClass(
         `material-symbols-${props.style ?? 'rounded'}`,
         props.className ?? 'icon',
+        'Icon',
         { '_disabled': disabled }
       )}
       style={{ userSelect: 'none' }}
