@@ -1,4 +1,3 @@
-const fs = require('fs');
 const setLanguages = require('electron-packager-languages');
 
 
@@ -19,7 +18,7 @@ module.exports = {
       /^\/tmp(\/|$)/
     ],
     afterCopy: [
-      setLanguages(['en', 'en_US'])
+      setLanguages(['en', 'en-US'])
     ]
   },
   makers: [

@@ -37,8 +37,9 @@ export class CoreApplication {
   private electronApp: electron.App;
   private quitting: boolean;
 
+  private darwinArchitecture!: 'arm64' | 'x64' | null;
   private data!: AppData;
-  private pythonInstallations!: PythonInstallationRecord;
+  private pythonInstallationsPromise: Promise<PythonInstallationRecord> | null = null;
 
   private appLogsDirPath: string;
   private dataDirPath: string;
@@ -224,17 +225,46 @@ export class CoreApplication {
   }
 
   async initialize() {
+    // Close the app if another instance is already running
+
     if (!this.electronApp.requestSingleInstanceLock()) {
+      this.logger.debug('Quitting as another instance is already running');
       this.electronApp.quit();
+
       return;
     }
+
+
+    // Get the architecture regardless of Rosetta 2
+
+    if (process.platform === 'darwin') {
+      let output = await runCommand('sysctl -in sysctl.proc_translated', { ignoreErrors: true });
+
+      if (output !== null) {
+        let translated = output[0].trim() === '1';
+
+        this.darwinArchitecture = translated
+          ? 'arm64'
+          : process.arch as ('arm64' | 'x64');
+      }
+    } else {
+      this.darwinArchitecture = null;
+    }
+
+
+    // Report information for debugging
 
     this.logger.debug(`Running process with id ${process.pid}`);
     this.logger.debug(`Running Node.js ${process.version}`);
     this.logger.debug(`Running Electron ${process.versions.electron}`);
     this.logger.debug(`Running Chrome ${process.versions.chrome}`);
-    this.logger.debug(`Running on platform ${os.platform()} ${os.release()} / ${os.arch()}`);
+    this.logger.debug(`Running binary compiled for architecture ${process.arch}`);
+    this.logger.debug(`Running on architecture ${this.darwinArchitecture ?? process.arch}`);
+    this.logger.debug(`Running on platform ${os.platform()} ${os.release()}`);
     this.logger.debug(`Running debug mode: ${this.debug ? 'yes' : 'no'}`);
+
+
+    // Write logs to a file
 
     await fs.mkdir(this.appLogsDirPath, { recursive: true });
     let appLogFilePath = path.join(this.appLogsDirPath, `${Date.now()}.log`);
@@ -256,9 +286,17 @@ export class CoreApplication {
     });
 
 
-    this.pythonInstallations = await findPythonInstallations();
+    // Find Python installations in the background
+
+    this.pool.add(() => this.getPythonInstallations());
+
+
+    // Wait for Electron to be ready
 
     await this.electronApp.whenReady();
+
+
+    // Intercept requests to the client part of plugins
 
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
       if (details.webContents) {
@@ -283,7 +321,10 @@ export class CoreApplication {
       }
     });
 
-    this.logger.info(`Loading data from ${this.dataDirPath}`);
+
+    // Load app data
+
+    this.logger.debug(`Loading data from ${this.dataDirPath}`);
     await this.loadData();
 
     if (!this.data) {
@@ -295,6 +336,8 @@ export class CoreApplication {
 
     this.logger.info('Initialized');
 
+
+    //* IPC *//
 
     let ipcMain = electron.ipcMain as IPCServer2d<IPCEndpoint>;
 
@@ -448,7 +491,8 @@ export class CoreApplication {
     });
 
     ipcMain.handle('hostSettings.createLocalHost', async (_event, options) => {
-      let pythonInstallation = options.customPythonInstallation ?? this.pythonInstallations[options.pythonInstallationSettings.id];
+      let pythonInstallations = await this.getPythonInstallations();
+      let pythonInstallation = options.customPythonInstallation ?? pythonInstallations[options.pythonInstallationSettings.id];
 
       let hostSettingsId = crypto.randomUUID() as HostSettingsId;
       let hostDirPath = path.join(this.hostsDirPath, hostSettingsId);
@@ -456,12 +500,12 @@ export class CoreApplication {
 
       let pythonPath = pythonInstallation.path;
       let architecture = options.pythonInstallationSettings.architecture ?? (
-        (process.platform === 'darwin')
+        (this.darwinArchitecture !== null)
           ? pythonInstallation.info.architectures!.find((architecture) =>
             ({
               'arm64': ['arm64', 'arm64e'],
               'x64': ['x86_64']
-            })[process.arch as ('arm64' | 'x64')].includes(architecture)
+            })[this.darwinArchitecture!].includes(architecture)
           ) ?? null
           : null
       );
@@ -544,11 +588,11 @@ export class CoreApplication {
     });
 
     ipcMain.handle('hostSettings.getHostCreatorContext', async (_event) => {
-      // console.log(require('util').inspect(this.pythonInstallations, { colors: true, depth: Infinity }));
+      console.log(require('util').inspect(await this.getPythonInstallations(), { colors: true, depth: Infinity }));
 
       return {
         computerName: util.getComputerName(),
-        pythonInstallations: this.pythonInstallations
+        pythonInstallations: await this.getPythonInstallations()
       };
     });
 
@@ -811,7 +855,7 @@ export class CoreApplication {
 
 
   async loadData() {
-    this.logger.info('Loading app data');
+    this.logger.debug('Loading app data');
 
     await fs.mkdir(this.dataDirPath, { recursive: true });
 
@@ -849,6 +893,12 @@ export class CoreApplication {
     await this.dataLock.acquireWith(async () => {
       await fs.writeFile(this.dataPath, JSON.stringify(this.data));
     });
+  }
+
+
+  private async getPythonInstallations() {
+    this.pythonInstallationsPromise ??= findPythonInstallations();
+    return await this.pythonInstallationsPromise;
   }
 }
 
