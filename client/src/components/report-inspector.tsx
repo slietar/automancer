@@ -9,7 +9,7 @@ import { Host } from '../host';
 import { GlobalContext } from '../interfaces/plugin';
 import { analyzeBlockPath, getBlockImpl } from '../protocol';
 import { usePool } from '../util';
-import { FeatureEntry, FeatureList, FeatureRoot } from './features';
+import { FeatureEntry, FeatureList, FeatureRoot } from '../libraries/features';
 import { Icon } from './icon';
 import { StaticSelect } from './static-select';
 

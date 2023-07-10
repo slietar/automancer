@@ -4,7 +4,7 @@ import type { ComponentType, ReactNode } from 'react';
 import type { Application } from '../application';
 import type { Host } from '../host';
 import type { ProtocolBlockGraphPair, ProtocolBlockGraphRenderer } from './graph';
-import type { FeatureDef } from '../components/features';
+import type { FeatureDef } from '../libraries/features';
 import type { Pool } from '../util';
 import type { StoreConsumer, StoreEntries } from '../store/types';
 import type { ShortcutCode } from '../shortcuts';

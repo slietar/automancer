@@ -1,7 +1,7 @@
 import { DiagnosticId, MasterBlockLocation, ProtocolBlock } from 'pr1-shared';
 
 import { ComponentType } from 'react';
-import { FeatureDef } from './components/features';
+import { FeatureDef } from './libraries/features';
 import { GraphNode } from './components/graph-editor';
 import { Report } from './components/report';
 import { RectSurface } from './geometry';

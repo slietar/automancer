@@ -40,7 +40,7 @@ export * from './components/description';
 export * from './components/report';
 export * from './components/error-boundary';
 export * from './components/expandable-text';
-export * from './components/features';
+export * from './libraries/features';
 export * from './components/graph-editor';
 export * from './components/item-list';
 export * from './components/large-icon';

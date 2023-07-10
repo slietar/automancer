@@ -5,7 +5,7 @@ import { Component, ReactNode, createRef } from 'react';
 import graphEditorStyles from '../../styles/components/graph-editor.module.scss';
 
 import { Application } from '../application';
-import { FeatureList } from '../components/features';
+import { Feature, FeatureList } from '../libraries/features';
 import { OverflowableText } from '../components/overflowable-text';
 import { Point, RectSurface, SideValues, Size, squareDistance, squareLength } from '../geometry';
 import { Host } from '../host';
@@ -587,7 +587,11 @@ export function GraphNode(props: {
             </div>
           )}
           <div className={graphEditorStyles.body}>
-            <FeatureList features={props.features} />
+            <FeatureList>
+              {props.features.map((feature, featureIndex) => (
+                <Feature feature={feature} key={featureIndex} />
+              ))}
+            </FeatureList>
           </div>
         </div>
       </foreignObject>

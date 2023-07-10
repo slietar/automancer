@@ -1,11 +1,8 @@
 import { OrdinaryId } from 'pr1-shared';
 import { PropsWithChildren, ReactNode, memo, useState } from 'react';
 
-import styles from '../../styles/components/features.module.scss';
-
 import { formatClass } from '../util';
-import { Icon } from './icon';
-
+import { Icon } from '../components/icon';
 
 
 export interface FeatureDef {
@@ -29,24 +26,32 @@ export interface FeatureActionDef {
   label?: string;
 }
 
+export interface FeatureEntryProps {
+  id: OrdinaryId;
+  actions?: FeatureActionDef[];
+  detail?: (() => ReactNode) | null;
+  features: FeatureDef[];
+  onAction?(actionId: OrdinaryId): void;
+}
+
 
 export const Feature = memo(({ feature, onAction }: {
   feature: FeatureDef;
   onAction?(actionId: OrdinaryId): void;
 }) => {
   return (
-    <div className={formatClass(styles.feature, {
-      [styles.featureAccent]: feature.accent,
-      [styles.featureDisabled]: feature.disabled
+    <div className={formatClass('Feature', {
+      '_accent': feature.accent,
+      '_disabled': feature.disabled
     })}>
-      <Icon name={feature.icon} className={styles.icon} />
-      <div className={styles.body}>
-        {feature.description && <div className={styles.description}>{feature.description}</div>}
-        <div className={styles.label}>{feature.label}</div>
+      <Icon name={feature.icon} className="icon" />
+      <div className="body">
+        {feature.description && <div className="description">{feature.description}</div>}
+        <div className="label">{feature.label}</div>
       </div>
       {feature.error && (
         <Icon
-          className={styles.errorIcon}
+          className="error-icon"
           name={{
             emergency: 'emergency_home',
             error: 'error',
@@ -56,7 +61,7 @@ export const Feature = memo(({ feature, onAction }: {
           }[feature.error.kind]}
           title={feature.error.message} />
       )}
-      <div className={styles.actions}>
+      <div className="actions">
         {feature.actions?.map((action, actionIndex) => (
           action
             ? (
@@ -64,10 +69,10 @@ export const Feature = memo(({ feature, onAction }: {
                 type="button"
                 disabled={!!action.disabled}
                 title={action.label}
-                className={styles.action}
+                className="item"
                 key={action.id}
                 onClick={() => void onAction!(action.id)}>
-                <Icon name={action.icon} style="sharp" />
+                <Icon name={action.icon} />
               </button>
             )
             : <div key={-actionIndex} />
@@ -77,6 +82,13 @@ export const Feature = memo(({ feature, onAction }: {
   );
 });
 
+export function FeatureEntries(props: PropsWithChildren<{}>) {
+  return (
+    <div className="FeatureEntries">
+      {props.children}
+    </div>
+  );
+}
 
 export const FeatureEntry = memo((props: {
   actions?: FeatureActionDef[];
@@ -87,8 +99,8 @@ export const FeatureEntry = memo((props: {
   let [detailOpen, setDetailOpen] = useState(false);
 
   return (
-    <div className={styles.entry}>
-      <div className={styles.features}>
+    <div className="FeatureEntry">
+      <div className="FeatureList">
         {props.features.map((feature, featureIndex) => (
           <Feature
             feature={{
@@ -123,7 +135,7 @@ export const FeatureEntry = memo((props: {
         ))}
       </div>
       {detailOpen && props.detail && (
-        <div className={styles.detail}>
+        <div className="detail">
           {props.detail()}
         </div>
       )}
@@ -131,25 +143,36 @@ export const FeatureEntry = memo((props: {
   );
 });
 
-
-export function FeatureList(props: {
-  features: FeatureDef[];
+export function FeatureGroups(props: {
+  groups: {
+    id: OrdinaryId;
+    contents: ReactNode;
+    label: ReactNode;
+  }[];
 }) {
   return (
-    <div className={styles.entry}>
-      <div className={styles.features}>
-        {props.features.map((feature, featureIndex) => (
-          <Feature feature={feature} key={featureIndex} />
-        ))}
-      </div>
+    <div className="FeatureGroups">
+      {props.groups.map((group) => (
+        <div className="item" key={group.id}>
+          <div className="label">{group.label}</div>
+          {group.contents}
+        </div>
+      ))}
     </div>
   );
 }
 
+export function FeatureList(props: PropsWithChildren<{}>) {
+  return (
+    <div className="FeatureList">
+      {props.children}
+    </div>
+  );
+}
 
 export function FeatureRoot(props: PropsWithChildren<{}>) {
   return (
-    <div className={styles.root}>
+    <div className="FeatureRoot">
       {props.children}
     </div>
   );

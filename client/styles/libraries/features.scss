@@ -1,0 +1,164 @@
+@use "../constants" as *;
+@use "../mixins" as *;
+
+
+$divider-height: 20px;
+$entry-height: 30px;
+
+
+/**
+
+.FeatureRoot
+  .FeatureGroups
+    .item [+]
+      .label
+      .FeatureEntries [+]
+        .FeatureEntry
+          .FeatureList
+            .Feature [+]
+              .icon
+              .body
+                .description
+                .label
+              .error-icon [?]
+              .actions [?]
+                .action
+                  .Icon
+          .detail
+
+*/
+
+
+.Feature {
+  display: grid;
+  align-items: center;
+  column-gap: 0.8rem;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+
+  height: $entry-height;
+  padding: 0 2px;
+
+  &._accent .icon {
+    background-color: $app-blue;
+  }
+
+  &._disabled {
+    opacity: 0.4;
+    color: #666;
+  }
+
+  .icon {
+    @include icon($size: 20px);
+
+    padding: 4px;
+
+    background-color: $icon-grey;
+    border-radius: 4px;
+
+    color: #fff;
+    font-size: 20px;
+  }
+
+  .body {
+    display: grid;
+    grid-template-rows: 14px 16px;
+  }
+
+  .description {
+    overflow-y: clip;
+
+    @include text-ellipsis();
+    color: #999;
+    font-size: 0.85rem;
+    line-height: 1.15;
+  }
+
+  .label {
+    overflow-y: clip;
+
+    @include text-ellipsis();
+    font-weight: 500;
+    line-height: 1.15;
+
+    &:only-child {
+      grid-row: 1 / -1;
+      align-self: center;
+    }
+
+    &:has(*) {
+      // Enables correct positioning of expressions
+      display: flex;
+    }
+  }
+
+  .actions {
+    display: grid;
+    column-gap: 0.2rem;
+    grid-auto-columns: 28px;
+    grid-auto-flow: column;
+    grid-template-rows: 28px;
+  }
+
+  .action {
+    display: grid;
+    place-content: center;
+
+    border: 1px solid transparent;
+    border-radius: 4px;
+
+    color: #999;
+
+    &:hover {
+      border-color: #ddd;
+      color: #666;
+    }
+
+    .Icon {
+      @include icon($fill: true, $size: 20px, $weight: 100);
+      translate: 0 1px;
+    }
+  }
+
+  .error-icon {
+    @include icon($fill: true, $size: 20px, $weight: 100);
+    color: $app-red;
+  }
+}
+
+.FeatureEntries {
+  display: flex;
+  flex-direction: column;
+  row-gap: 0.4rem;
+}
+
+.FeatureEntry {
+  > .detail {
+    padding: 1rem 1.2rem 1.6rem 1.2rem;
+  }
+}
+
+.FeatureGroups {
+  display: flex;
+  flex-direction: column;
+  row-gap: 1.2rem;
+
+  > .item > .label {
+    margin-bottom: 0.6rem;
+
+    @include text-ellipsis();
+    color: #666;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+}
+
+.FeatureList {
+  display: flex;
+  flex-direction: column;
+  row-gap: 0.4rem;
+}
+
+.FeatureRoot {
+  margin: 1rem 0;
+}

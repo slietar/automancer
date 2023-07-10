@@ -10,7 +10,7 @@ import { ErrorBoundary } from './error-boundary';
 import { BlockContext, GlobalContext } from '../interfaces/plugin';
 import { Pool } from '../util';
 import { analyzeBlockPath, createBlockContext, getBlockImpl } from '../protocol';
-import { FeatureEntry, FeatureList, FeatureRoot } from './features';
+import { FeatureEntry, FeatureList, FeatureRoot } from '../libraries/features';
 import { Application } from '../application';
 import { formatDateOrTimePair, formatRemainingDuration } from '../format';
 import { TimeSensitive } from './time-sensitive';
