@@ -33,8 +33,8 @@ export function ShadowScrollable(props: React.PropsWithChildren<{
         (elInner.scrollHeight - elOuter.offsetHeight - elInner.scrollTop)
       ]
 
-    elOuter.style.setProperty('--scroll-start', CSS.number(scrollStart));
-    elOuter.style.setProperty('--scroll-end', CSS.number(scrollEnd));
+    elOuter.style.setProperty('--scroll-start', CSS.number(scrollStart).toString());
+    elOuter.style.setProperty('--scroll-end', CSS.number(scrollEnd).toString());
   };
 
   React.useEffect(() => {

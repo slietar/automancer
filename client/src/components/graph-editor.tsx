@@ -159,11 +159,13 @@ export class GraphEditor extends Component<GraphEditorProps, GraphEditorState> {
 
 
     let styles = this.refContainer.current!.computedStyleMap();
-    let cellPixelSize = CSSNumericValue.parse(styles.get('--cell-size')!).value;
-    let nodeBorderWidth = CSSNumericValue.parse(styles.get('--node-border-width')!).value;
-    let nodeHeaderHeight = CSSNumericValue.parse(styles.get('--node-header-height')!).value;
-    let nodePadding = CSSNumericValue.parse(styles.get('--node-padding')!).value;
-    let nodeBodyPaddingY = CSSNumericValue.parse(styles.get('--node-body-padding-y')!).value;
+    let getPxValueFromCSSStyleValue = (value: CSSStyleValue) => CSSNumericValue.parse(value.toString()).to('px').value;
+
+    let cellPixelSize = getPxValueFromCSSStyleValue(styles.get('--cell-size')!);
+    let nodeBorderWidth = getPxValueFromCSSStyleValue(styles.get('--node-border-width')!);
+    let nodeHeaderHeight = getPxValueFromCSSStyleValue(styles.get('--node-header-height')!);
+    let nodePadding = getPxValueFromCSSStyleValue(styles.get('--node-padding')!);
+    let nodeBodyPaddingY = getPxValueFromCSSStyleValue(styles.get('--node-body-padding-y')!);
 
     this.settings = {
       editor: this,
@@ -295,6 +297,9 @@ export class GraphEditor extends Component<GraphEditorProps, GraphEditorState> {
           let currentBlockName = getBlockName(currentBlock);
 
           if (currentBlockName && groupName) {
+            // The currentBlockPath variable is the only one which corresponds to the last block of the group
+            // after the loop ends.
+            currentBlockPath.pop();
             break;
           }
 
@@ -333,13 +338,16 @@ export class GraphEditor extends Component<GraphEditorProps, GraphEditorState> {
 
         let implComputeGraph =  currentBlockImpl.getChildren && (groupName || (defaultLabelComponents.length > 0))
           ? computeContainerBlockGraph
-          : currentBlockImpl.computeGraph!;
+          : (currentBlockImpl.computeGraph ?? computeContainerBlockGraph);
 
-        return implComputeGraph(currentBlock, currentBlockPath, pairs, group, currentLocation, {
+        let lastPair = groupPairs.at(-1)!;
+
+        return implComputeGraph(lastPair.block, currentBlockPath, pairs, group, currentLocation, {
           settings,
           computeMetrics: (key) => {
-            let childBlock = currentBlockImpl.getChildren!(currentBlock, globalContext)[key].block;
-            let childLocation = currentLocation && (currentBlockImpl.getChildrenExecution!(currentBlock, currentLocation, globalContext)?.[key]?.location ?? null);
+            let lastBlockImpl = getBlockImpl(lastPair.block, globalContext);
+            let childBlock = lastBlockImpl.getChildren!(lastPair.block, globalContext)[key].block;
+            let childLocation = lastPair.location && (lastBlockImpl.getChildrenExecution!(lastPair.block, lastPair.location, globalContext)?.[key]?.location ?? null);
 
             return computeGraph(childBlock, [...currentBlockPath, key], pairs, childLocation);
           }
@@ -697,7 +705,7 @@ export function GraphNodeContainer(props: {
 
 const computeContainerBlockGraph: ProtocolBlockGraphRenderer<ProtocolBlock, MasterBlockLocation> = (block, path, pairs, group, location, options, context) => {
   let blockImpl = getBlockImpl(block, context);
-  let childMetrics = blockImpl.computeGraph!(block, path, pairs, group, location, options, context);
+  let childMetrics = blockImpl.computeGraph?.(block, path, pairs, group, location, options, context) ?? options.computeMetrics(0);
 
   let size = {
     width: childMetrics.size.width + 2,

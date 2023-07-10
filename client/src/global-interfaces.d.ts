@@ -12,12 +12,6 @@ declare global {
     adoptedStyleSheets: CSSStyleSheet[];
   }
 
-  interface Element {
-    computedStyleMap(): {
-      get(property: string): CSSUnparsedValue;
-    };
-  }
-
   interface Keyboard {
     getLayoutMap(): Promise<KeyboardLayoutMap>;
   }
@@ -32,21 +26,6 @@ declare global {
 
   interface Window {
     MonacoEnvironment?: monaco.Environment | undefined;
-  }
-
-  namespace CSS {
-    function number(value: number): any;
-  }
-
-  class CSSNumericValue {
-    unit: string;
-    value: number;
-
-    static parse(cssText: CSSUnparsedValue | string): CSSNumericValue;
-  }
-
-  class CSSUnparsedValue {
-    toString(): string;
   }
 
   class URLPattern {
