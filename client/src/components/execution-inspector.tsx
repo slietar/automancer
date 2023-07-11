@@ -10,7 +10,7 @@ import { ErrorBoundary } from './error-boundary';
 import { BlockContext, GlobalContext } from '../interfaces/plugin';
 import { Pool } from '../util';
 import { analyzeBlockPath, createBlockContext, getBlockImpl } from '../protocol';
-import { FeatureEntry, FeatureList, FeatureRoot } from '../libraries/features';
+import { Feature, FeatureEntries, FeatureEntry, FeatureGroups, FeatureList, FeatureRoot } from '../libraries/features';
 import { Application } from '../application';
 import { formatDateOrTimePair, formatRemainingDuration } from '../format';
 import { TimeSensitive } from './time-sensitive';
@@ -128,10 +128,11 @@ export class ExecutionInspector extends Component<ExecutionInspectorProps, Execu
 
           {blockAnalysis.isLeafBlockTerminal && (
             <FeatureRoot>
-              <FeatureList features={leafBlockImpl.createFeatures!(leafPair.block, leafPair.location, [], globalContext).map((feature) => ({
-                ...feature,
-                accent: true
-              }))} />
+              <FeatureList>
+                {leafBlockImpl.createFeatures!(leafPair.block, leafPair.location, [], globalContext).map((feature, featureIndex) => (
+                  <Feature feature={{ ...feature, accent: true }} key={feature.id ?? featureIndex} />
+                ))}
+              </FeatureList>
             </FeatureRoot>
           )}
 
@@ -145,12 +146,12 @@ export class ExecutionInspector extends Component<ExecutionInspectorProps, Execu
           )}
 
           <FeatureRoot>
-            {blockAnalysis.groups.slice().reverse().map((group) =>
-              group.pairs.slice().reverse().map((pair, pairIndex) => {
+            <FeatureGroups groups={blockAnalysis.groups.slice().reverse().flatMap((group) => {
+              let renderedEntriesByPair = group.pairs.slice().reverse().flatMap((pair, pairIndex) => {
                 let blockImpl = getBlockImpl(pair.block, globalContext);
 
                 if (!blockImpl.createFeatures) {
-                  return null;
+                  return [];
                 }
 
                 let blockPath = this.props.blockPath!.slice(0, group.firstPairIndex + group.pairs.length - pairIndex - 1);
@@ -158,14 +159,21 @@ export class ExecutionInspector extends Component<ExecutionInspectorProps, Execu
                 let blockContext = createBlockContext(blockPath, this.props.experiment, globalContext);
                 let descendantPairs = blockAnalysis.pairs.slice(group.firstPairIndex + group.pairs.length - pairIndex);
 
-                let actions = (blockImpl.createActions?.(pair.block, pair.location, blockContext) ?? []);
+                let actions = blockImpl.createActions?.(pair.block, pair.location, blockContext) ?? [];
+                let features = blockImpl.createFeatures(pair.block, pair.location, descendantPairs, globalContext);
 
-                return (
+                if (features.length < 1) {
+                  return [];
+                }
+
+                return [(
                   <FeatureEntry
                     actions={[
                       ...actions,
-                      { id: '_halt',
-                        icon: 'skip_next' }
+                      {
+                        id: '_halt',
+                        icon: 'skip_next'
+                      }
                     ]}
                     detail={(blockImpl.Component ?? null) && (() => {
                       let Component = blockImpl.Component!;
@@ -177,7 +185,7 @@ export class ExecutionInspector extends Component<ExecutionInspectorProps, Execu
                           location={pair.location} />
                       );
                     })}
-                    features={blockImpl.createFeatures(pair.block, pair.location, descendantPairs, globalContext)}
+                    features={features}
                     onAction={(actionId) => {
                       if (actionId === '_halt') {
                         this.pool.add(async () => {
@@ -193,9 +201,23 @@ export class ExecutionInspector extends Component<ExecutionInspectorProps, Execu
                       }
                     }}
                     key={pairIndex} />
-                );
-              })
-            )}
+                )];
+              });
+
+              if (renderedEntriesByPair.length < 1) {
+                return [];
+              }
+
+              return [{
+                id: group.firstPairIndex,
+                label: group.name ?? group.labels.join(', ') ?? <i>Untitled group</i>,
+                contents: (
+                  <FeatureEntries>
+                    {renderedEntriesByPair}
+                  </FeatureEntries>
+                )
+              }];
+            })} />
           </FeatureRoot>
         </div>
         <div className={spotlightStyles.footerRoot}>

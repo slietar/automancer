@@ -7,9 +7,9 @@ import { Application } from '../application';
 import { formatDateOrTimePair } from '../format';
 import { Host } from '../host';
 import { GlobalContext } from '../interfaces/plugin';
+import { Feature, FeatureGroups, FeatureList, FeatureRoot } from '../libraries/features';
 import { analyzeBlockPath, getBlockImpl } from '../protocol';
 import { usePool } from '../util';
-import { FeatureEntry, FeatureList, FeatureRoot } from '../libraries/features';
 import { Icon } from './icon';
 import { StaticSelect } from './static-select';
 
@@ -137,30 +137,49 @@ export function ReportInspector(props: {
           <>
             {blockAnalysis.isLeafBlockTerminal && (
               <FeatureRoot>
-                <FeatureList features={leafBlockImpl.createFeatures!(leafPair.block, leafPair.location, [], globalContext).map((feature) => ({
-                  ...feature,
-                  accent: true
-                }))} />
+                <FeatureList>
+                  {leafBlockImpl.createFeatures!(leafPair.block, null, [], globalContext).map((feature, featureIndex) => (
+                    <Feature feature={{ ...feature, accent: true }} key={feature.id ?? featureIndex} />
+                  ))}
+                </FeatureList>
               </FeatureRoot>
             )}
 
             <FeatureRoot>
-              {blockAnalysis.groups.slice().reverse().map((group) =>
-                group.pairs.slice().reverse().map((pair, pairIndex) => {
+              <FeatureGroups groups={blockAnalysis.groups.slice().reverse().flatMap((group) => {
+                let renderedFeaturesByPair = group.pairs.slice().reverse().flatMap((pair, pairIndex) => {
                   let blockImpl = getBlockImpl(pair.block, globalContext);
                   let descendantPairs = blockAnalysis.pairs.slice(group.firstPairIndex + group.pairs.length - pairIndex);
 
-                  if (!blockImpl.createFeatures) {
-                    return null;
+                  let features = blockImpl.createFeatures?.(pair.block, pair.location, descendantPairs, globalContext) ?? [];
+
+                  if (features.length < 1) {
+                    return [];
                   }
 
-                  return (
-                    <FeatureEntry
-                      features={blockImpl.createFeatures(pair.block, pair.location, descendantPairs, globalContext)}
-                      key={pairIndex} />
-                  );
-                })
-              )}
+                  return [(
+                    <Fragment key={pairIndex}>
+                      {features.map((feature, featureIndex) => (
+                        <Feature feature={feature} key={feature.id ?? featureIndex} />
+                      ))}
+                    </Fragment>
+                  )];
+                });
+
+                if (renderedFeaturesByPair.length < 1) {
+                  return [];
+                }
+
+                return [{
+                  id: group.firstPairIndex,
+                  label: group.name ?? group.labels.join(', ') ?? <i>Untitled group</i>,
+                  contents: (
+                    <FeatureList>
+                      {renderedFeaturesByPair}
+                    </FeatureList>
+                  )
+                }];
+              })} />
             </FeatureRoot>
           </>
         )}

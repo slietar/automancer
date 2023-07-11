@@ -1,4 +1,5 @@
 import { DatetimeTerm, DurationTerm, Experiment, MasterBlockLocation, Protocol, ProtocolBlock, ProtocolBlockPath, Term, addTerms, createErrorWithCode } from 'pr1-shared';
+import { ReactNode } from 'react';
 
 import { HostDraftMark } from './interfaces/draft';
 import { BlockContext, GlobalContext } from './interfaces/plugin';
@@ -6,6 +7,7 @@ import { BlockContext, GlobalContext } from './interfaces/plugin';
 
 export interface BlockGroup {
   firstPairIndex: number;
+  labels: ReactNode[];
   name: string | null;
   pairs: BlockPair[];
 
@@ -191,6 +193,7 @@ export function analyzeBlockPath(
     if (sparse || !group || (blockName && group.name)) {
       group = {
         firstPairIndex: blockIndex,
+        labels: [],
         name: null,
         pairs: [],
         path: []
@@ -203,6 +206,12 @@ export function analyzeBlockPath(
 
     if (blockName) {
       group.name = blockName;
+    }
+
+    let label = blockImpl.getLabel?.(pair.block) ?? null;
+
+    if (label !== null) {
+      group.labels.push(label);
     }
 
     group.pairs.push(pair);

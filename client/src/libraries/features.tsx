@@ -61,23 +61,25 @@ export const Feature = memo(({ feature, onAction }: {
           }[feature.error.kind]}
           title={feature.error.message} />
       )}
-      <div className="actions">
-        {feature.actions?.map((action, actionIndex) => (
-          action
-            ? (
-              <button
-                type="button"
-                disabled={!!action.disabled}
-                title={action.label}
-                className="item"
-                key={action.id}
-                onClick={() => void onAction!(action.id)}>
-                <Icon name={action.icon} />
-              </button>
-            )
-            : <div key={-actionIndex} />
-        ))}
-      </div>
+      {feature.actions && (
+        <div className="actions">
+          {feature.actions.map((action, actionIndex) => (
+            action
+              ? (
+                <button
+                  type="button"
+                  disabled={!!action.disabled}
+                  title={action.label}
+                  className="item"
+                  key={action.id}
+                  onClick={() => void onAction!(action.id)}>
+                  <Icon name={action.icon} />
+                </button>
+              )
+              : <div key={-actionIndex} />
+          ))}
+        </div>
+      )}
     </div>
   );
 });

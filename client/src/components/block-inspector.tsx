@@ -102,42 +102,48 @@ export function BlockInspector(props: {
         {blockAnalysis.isLeafBlockTerminal && (
           <FeatureRoot>
             <FeatureList>
-              {leafBlockImpl.createFeatures!(leafPair.block, null, [], globalContext).map((feature) => (
-                <Feature feature={{ ...feature, accent: true }} key={feature.id} />
+              {leafBlockImpl.createFeatures!(leafPair.block, null, [], globalContext).map((feature, featureIndex) => (
+                <Feature feature={{ ...feature, accent: true }} key={feature.id ?? featureIndex} />
               ))}
             </FeatureList>
           </FeatureRoot>
         )}
 
-        {(() => {
-          return null;
-        })()}
-
         <FeatureRoot>
-          <FeatureGroups groups={blockAnalysis.groups.slice().reverse().map((group) => ({
-            id: group.firstPairIndex,
-            label: group.name ?? <i>Untitled group</i>,
-            contents: (
-              <FeatureList>
-                {group.pairs.slice().reverse().map((pair, pairIndex) => {
-                  let blockImpl = getBlockImpl(pair.block, globalContext);
-                  let descendantPairs = blockAnalysis.pairs.slice(group.firstPairIndex + group.pairs.length - pairIndex);
+          <FeatureGroups groups={blockAnalysis.groups.slice().reverse().flatMap((group) => {
+            let renderedFeaturesByPair = group.pairs.slice().reverse().flatMap((pair, pairIndex) => {
+              let blockImpl = getBlockImpl(pair.block, globalContext);
+              let descendantPairs = blockAnalysis.pairs.slice(group.firstPairIndex + group.pairs.length - pairIndex);
 
-                  if (!blockImpl.createFeatures) {
-                    return null;
-                  }
+              let features = blockImpl.createFeatures?.(pair.block, null, descendantPairs, globalContext) ?? [];
 
-                  return (
-                    <Fragment key={pairIndex}>
-                      {blockImpl.createFeatures(pair.block, pair.location, descendantPairs, globalContext).map((feature, featureIndex) => (
-                        <Feature feature={feature} key={featureIndex} />
-                      ))}
-                    </Fragment>
-                  );
-                })}
-              </FeatureList>
-            )
-          }))} />
+              if (features.length < 1) {
+                return [];
+              }
+
+              return [(
+                <Fragment key={pairIndex}>
+                  {features.map((feature, featureIndex) => (
+                    <Feature feature={feature} key={feature.id ?? featureIndex} />
+                  ))}
+                </Fragment>
+              )];
+            });
+
+            if (renderedFeaturesByPair.length < 1) {
+              return [];
+            }
+
+            return [{
+              id: group.firstPairIndex,
+              label: group.name ?? group.labels.join(', ') ?? <i>Untitled group</i>,
+              contents: (
+                <FeatureList>
+                  {renderedFeaturesByPair}
+                </FeatureList>
+              )
+            }];
+          })} />
         </FeatureRoot>
       </div>
       {props.footer && (
