@@ -1,4 +1,4 @@
-import { EvaluableValue, Plugin, ProgressBar, ProgressDisplayMode, TimeSensitive, TimedProgressBar, createProcessBlockImpl, formatDuration, formatEvaluable } from 'pr1';
+import { EvaluableValue, Plugin, ProgressDisplayMode, TimeSensitive, TimedProgressBar, createProcessBlockImpl, formatDuration, formatEvaluable } from 'pr1';
 import { PluginName, ProtocolBlockName } from 'pr1-shared';
 
 
@@ -31,7 +31,7 @@ export default {
         return (
           <TimedProgressBar
             date={props.location.date}
-            duration={props.location.duration * 1000}
+            duration={props.location.duration}
             setValue={(progress) => {
               props.context.pool.add(async () => {
                 await props.context.sendMessage({
@@ -50,18 +50,24 @@ export default {
           return null;
         }
 
+        let progress = props.location.progress + (
+          (props.location.date !== null)
+            ? (props.eventDate - props.location.date) / (props.location.duration)
+            : 0
+        );
+
         return (
           <TimedProgressBar
             date={null}
-            duration={props.location.duration * 1000}
+            duration={props.location.duration}
             paused={props.location.date === null}
-            value={props.location.progress} />
+            value={progress} />
         );
       },
       createFeatures(data, location) {
         let formatInnerValue = (value: number | null) =>
           (value !== null)
-            ? formatDuration(value * 1000)
+            ? formatDuration(value)
             : 'Forever';
 
         return [{
@@ -76,98 +82,6 @@ export default {
       }
     })
   },
-
-/*   executionPanels: [{
-    id: '_',
-    label: 'Timer',
-    shortcut: 'T',
-    Component(props) {
-      // return <PanelLoader />;
-
-      return (
-        // <PanelPlaceholder message="No timer currently active" />
-        <PanelRoot>
-          <PanelSection>
-            <h2>Metrics</h2>
-
-            <p>Most recent orders delivered to customers.</p>
-
-            <PanelDataList data={[
-              { label: 'Duration', value: 'Forever' },
-              { label: 'Time elapsed', value: 'Forever' },
-              { label: 'Time elapsed elapsed elapsed', value: `${new Date()}` }
-            ]} />
-          </PanelSection>
-          <PanelSection>
-            <h2>Actions</h2>
-
-            <PanelActions>
-              <PanelAction>Toggle</PanelAction>
-              <PanelAction>Toggle</PanelAction>
-            </PanelActions>
-          </PanelSection>
-          <PanelSection>
-            <h2>Results</h2>
-
-            <PanelSpinner />
-          </PanelSection>
-          <PanelSection>
-            <h2>Input</h2>
-
-            <Form.TextField label="Value 1" value="Foo" onInput={() => {}} />
-            <Form.TextField label="Value 2" value="Foo" onInput={() => {}} />
-          </PanelSection>
-          <PanelSection>
-            <PanelActions>
-              <PanelAction>Toggle</PanelAction>
-              <PanelAction>Toggle</PanelAction>
-            </PanelActions>
-          </PanelSection>
-          <PanelSection>
-            <PanelActions>
-              <PanelAction>Toggle</PanelAction>
-              <PanelAction>Toggle</PanelAction>
-            </PanelActions>
-          </PanelSection>
-          <PanelSection>
-            <PanelActions>
-              <PanelAction>Toggle</PanelAction>
-              <PanelAction>Toggle</PanelAction>
-            </PanelActions>
-          </PanelSection>
-          <PanelSection>
-            <PanelActions>
-              <PanelAction>Toggle</PanelAction>
-              <PanelAction>Toggle</PanelAction>
-            </PanelActions>
-          </PanelSection>
-        </PanelRoot>
-      );
-    }
-  }], */
-
-/*   SettingsComponent(props) {
-    let [shortcutPref, setShortcutPref] = props.context.store.usePersistent('progressDisplayMode');
-
-    return (
-      <>
-        <h2>Timer</h2>
-
-        <Form.Select
-          label="Progress display mode"
-          value={shortcutPref}
-          onInput={setShortcutPref}
-          options={[
-            { id: ProgressDisplayMode.Fraction,
-              label: 'Fraction' },
-            { id: ProgressDisplayMode.TimeElapsed,
-              label: 'Time elapsed' },
-            { id: ProgressDisplayMode.TimeRemaining,
-              label: 'Time remaining' }
-          ]} />
-      </>
-    );
-  }, */
 
   persistentStoreDefaults: {
     progressDisplayMode: ProgressDisplayMode.Fraction

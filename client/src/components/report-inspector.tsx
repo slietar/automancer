@@ -172,6 +172,7 @@ export function ReportInspector(props: {
                 <leafBlockImpl.ReportComponent
                   block={leafPair.block}
                   context={globalContext}
+                  eventDate={events[selection.eventIndex].date}
                   location={leafPair.location} />
               </ErrorBoundary>
             )}

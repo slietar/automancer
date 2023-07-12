@@ -140,6 +140,7 @@ export function createProcessBlockImpl<Data, Location>(options: {
   ReportComponent?: ComponentType<{
     context: GlobalContext;
     data: Data;
+    eventDate: number;
     location: Location;
     status: 'normal' | 'paused';
   }>;
@@ -201,6 +202,7 @@ export function createProcessBlockImpl<Data, Location>(options: {
           <Component
             data={props.block.data}
             context={props.context}
+            eventDate={props.eventDate}
             location={mode.processInfo.location}
             status={(mode.form === 'paused') ? 'paused' : 'normal'} />
         );

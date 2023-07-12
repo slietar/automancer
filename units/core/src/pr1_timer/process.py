@@ -22,7 +22,7 @@ class ProcessLocation:
   def export(self):
     return {
       "date": (self.time * 1000) if (self.time is not None) else None,
-      "duration": self.duration,
+      "duration": (self.duration * 1000) if (self.duration is not None) else None,
       "progress": self.progress
     }
 
@@ -47,7 +47,7 @@ class Process(am.BaseClassProcess[ProcessData, ProcessLocation, ProcessPoint]):
 
   def export_data(self, data: am.Evaluable[PossiblyLocatedValue[ProcessData]], /):
     return {
-      "duration": data.export_inner(lambda value: (value / am.ureg.second).magnitude if not isinstance(value, str) else None)
+      "duration": data.export_inner(lambda value: (value / am.ureg.second).magnitude * 1000 if not isinstance(value, str) else None)
     }
 
   def import_point(self, raw_point, /):
@@ -96,6 +96,9 @@ class Process(am.BaseClassProcess[ProcessData, ProcessLocation, ProcessPoint]):
           while True:
             try:
               await context.checkpoint()
+            except asyncio.CancelledError:
+              context.send_location(ProcessLocation(total_duration, progress))
+              raise
             except am.ProcessJumpRequest as e:
               progress = context.cast(e).point.progress
 

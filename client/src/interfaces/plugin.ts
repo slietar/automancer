@@ -86,6 +86,7 @@ export interface PluginBlockImplComponentProps<Block extends ProtocolBlock, Loca
 export interface PluginBlockImplReportComponentProps<Block extends ProtocolBlock, Location> {
   block: Block;
   context: GlobalContext;
+  eventDate: number;
   location: Location;
 }
 
