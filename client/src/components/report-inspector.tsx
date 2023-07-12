@@ -1,8 +1,9 @@
-import { Experiment, ExperimentReportEvents, ExperimentReportInfo, ExperimentReportStaticEntry, Protocol, ProtocolBlockPath } from 'pr1-shared';
+import { Experiment, ExperimentReportEventIndex, ExperimentReportEvents, ExperimentReportInfo, ExperimentReportStaticEntry, Protocol, ProtocolBlockPath } from 'pr1-shared';
 import { Fragment, useEffect, useState } from 'react';
 
 import spotlightStyles from '../../styles/components/spotlight.module.scss';
 
+import { Range } from 'immutable';
 import { Application } from '../application';
 import { formatDateOrTimePair } from '../format';
 import { Host } from '../host';
@@ -10,6 +11,8 @@ import { GlobalContext } from '../interfaces/plugin';
 import { Feature, FeatureGroups, FeatureList, FeatureRoot } from '../libraries/features';
 import { analyzeBlockPath, getBlockImpl } from '../protocol';
 import { usePool } from '../util';
+import { DiscreteSlider } from './discrete-slider';
+import { ErrorBoundary } from './error-boundary';
 import { Icon } from './icon';
 import { StaticSelect } from './static-select';
 
@@ -37,7 +40,19 @@ export function ReportInspector(props: {
   let occurences = (staticEntry?.occurences ?? []);
 
   let [events, setEvents] = useState<ExperimentReportEvents | null>(null);
-  let [selectedOccurenceIndex, setSelectedOccurenceIndex] = useState<number | null>((occurences.length > 0) ? 0 : null);
+  let [selection, setSelection] = useState<{
+    eventIndex: ExperimentReportEventIndex;
+    occurenceIndex: number;
+  } | null>(
+    (occurences.length > 0)
+      ?  {
+        eventIndex: occurences[0][0],
+        occurenceIndex: 0
+      }
+      : null
+  );
+  // } | null>((occurences.length > 0) ? 0 : null);
+  // let [selectedEventIndex, setSelectedEventIndex] = useState<number | null>(null);
 
   let globalContext: GlobalContext = {
     app: props.app,
@@ -49,7 +64,7 @@ export function ReportInspector(props: {
     pool.add(async () => {
       let events = await props.host.client.request({
         type: 'getExperimentReportEvents',
-        eventIndices: occurences.flat(),
+        eventIndices: occurences.flatMap((occurence) => Range(occurence[0], occurence[1]).toArray() as ExperimentReportEventIndex[]),
         experimentId: props.experiment.id
       });
 
@@ -57,8 +72,8 @@ export function ReportInspector(props: {
     });
   }, []);
 
-  let location = events && (selectedOccurenceIndex !== null)
-    ? events[occurences[selectedOccurenceIndex][0]].location
+  let location = events && (selection !== null)
+    ? events[selection.eventIndex].location
     : null;
 
   let blockAnalysis = analyzeBlockPath(props.protocol, location, null, props.blockPath, globalContext);
@@ -101,29 +116,36 @@ export function ReportInspector(props: {
                   { id: null, label: 'General form' },
                   ...occurences.map(([startEventIndex, endEventIndex], occurenceIndex) => {
                     let startEvent = events![startEventIndex];
-                    let endEvent = events![endEventIndex];
+                    let lastEvent = events![(endEventIndex - 1) as ExperimentReportEventIndex];
 
                     return {
-                      id: occurenceIndex,
-                      label: formatDateOrTimePair(startEvent.date, endEvent.date, props.reportInfo.startDate, { display: 'time', format: 'text' })
+                      id: (occurenceIndex as ExperimentReportEventIndex),
+                      label: formatDateOrTimePair(startEvent.date, lastEvent.date, props.reportInfo.startDate, { display: 'time', format: 'text' })
                     };
                   })
                 ]}
-                selectedOptionId={selectedOccurenceIndex}
-                selectOption={(occurenceIndex) => void setSelectedOccurenceIndex(occurenceIndex)}>
+                selectedOptionId={selection?.occurenceIndex ?? null}
+                selectOption={(occurenceIndex) => void setSelection(
+                  (occurenceIndex !== null)
+                    ? {
+                      occurenceIndex,
+                      eventIndex: occurences[occurenceIndex][0]
+                    }
+                    : null
+                )}>
                 {(() => {
-                  if (selectedOccurenceIndex === null) {
+                  if (selection === null) {
                     return 'General form';
                   }
 
-                  let occurence = occurences[selectedOccurenceIndex];
+                  let occurence = occurences[selection.occurenceIndex];
                   let startEvent = events![occurence[0]];
-                  let endEvent = events![occurence[1]];
+                  let lastEvent = events![(occurence[1] - 1) as ExperimentReportEventIndex];
 
                   return (
                     <>
-                      {formatDateOrTimePair(startEvent.date, endEvent.date, props.reportInfo.startDate, { display: 'time', format: 'react' })} (
-                      {formatDateOrTimePair(startEvent.date, endEvent.date, props.reportInfo.startDate, { display: 'date', format: 'react' })})
+                      {formatDateOrTimePair(startEvent.date, lastEvent.date, props.reportInfo.startDate, { display: 'time', format: 'react' })} (
+                      {formatDateOrTimePair(startEvent.date, lastEvent.date, props.reportInfo.startDate, { display: 'date', format: 'react' })})
                     </>
                   );
                 })()}
@@ -138,11 +160,20 @@ export function ReportInspector(props: {
             {blockAnalysis.isLeafBlockTerminal && (
               <FeatureRoot>
                 <FeatureList>
-                  {leafBlockImpl.createFeatures!(leafPair.block, null, [], globalContext).map((feature, featureIndex) => (
+                  {leafBlockImpl.createFeatures!(leafPair.block, leafPair.location, [], globalContext).map((feature, featureIndex) => (
                     <Feature feature={{ ...feature, accent: true }} key={feature.id ?? featureIndex} />
                   ))}
                 </FeatureList>
               </FeatureRoot>
+            )}
+
+            {leafBlockImpl.Component && (
+              <ErrorBoundary>
+                <leafBlockImpl.Component
+                  block={leafPair.block}
+                  context={null}
+                  location={leafPair.location} />
+              </ErrorBoundary>
             )}
 
             <FeatureRoot>
@@ -184,6 +215,32 @@ export function ReportInspector(props: {
           </>
         )}
       </div>
+      {events && (selection !== null) && (() => {
+        let [startEventIndex, endEventIndex] = occurences[selection.occurenceIndex];
+        let startEvent = events[startEventIndex];
+        let lastEvent = events[(endEventIndex - 1) as ExperimentReportEventIndex];
+
+        return (
+          <DiscreteSlider
+            currentItemIndex={selection.eventIndex - startEventIndex}
+            items={Range(startEventIndex, endEventIndex).toArray().map((eventIndex_) => {
+              let eventIndex = eventIndex_ as ExperimentReportEventIndex;
+              let event = events![eventIndex];
+
+              return {
+                // label: formatDateOrTime(events![startEventIndex + index].date, props.reportInfo.startDate, { display: 'time', format: 'text' }),
+                label: eventIndex.toString(),
+                position: (event.date - startEvent.date) / (lastEvent.date - startEvent.date)
+              };
+            })}
+            setCurrentItemIndex={(itemIndex) => {
+              setSelection((selection) => selection && {
+                ...selection,
+                eventIndex: (startEventIndex + itemIndex) as ExperimentReportEventIndex
+              });
+            }} />
+        );
+      })()}
     </div>
   );
 }

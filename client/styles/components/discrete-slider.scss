@@ -1,0 +1,36 @@
+@use "sass:math";
+
+
+$slider-height: 2px;
+
+.DiscreteSlider {
+  padding: 1.4rem 2rem;
+  border-top: 1px solid #ddd;
+
+  .cursor {
+    width: 16px;
+    aspect-ratio: 1;
+
+    position: absolute;
+    left: calc(var(--progress) * 100%);
+    translate: -50% calc(-50% + math.div($slider-height, 2));
+
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 50%;
+
+    cursor: pointer;
+  }
+
+  &._active .cursor {
+    border-color: #0074d9;
+    box-shadow: 2px 2px 6px #0001;
+  }
+
+  .track {
+    position: relative;
+
+    background-color: #ddd;
+    height: $slider-height;
+  }
+}
