@@ -5,7 +5,7 @@ import spotlightStyles from '../../styles/components/spotlight.module.scss';
 
 import { Range } from 'immutable';
 import { Application } from '../application';
-import { formatDateOrTimePair } from '../format';
+import { formatDateOrTimePair, formatDigitalDate, formatDigitalTime } from '../format';
 import { Host } from '../host';
 import { GlobalContext } from '../interfaces/plugin';
 import { Feature, FeatureGroups, FeatureList, FeatureRoot } from '../libraries/features';
@@ -226,10 +226,16 @@ export function ReportInspector(props: {
             items={Range(startEventIndex, endEventIndex).toArray().map((eventIndex_) => {
               let eventIndex = eventIndex_ as ExperimentReportEventIndex;
               let event = events![eventIndex];
+              let eventCountString = (endEventIndex - startEventIndex).toString();
 
               return {
-                // label: formatDateOrTime(events![startEventIndex + index].date, props.reportInfo.startDate, { display: 'time', format: 'text' }),
-                label: eventIndex.toString(),
+                label: (
+                  <>
+                    {formatDigitalTime(event.date - props.reportInfo.startDate, { format: 'react', includeSeconds: true })} (
+                    {formatDigitalDate(event.date, props.reportInfo.startDate, { format: 'react', includeSeconds: true })}) [
+                    {(eventIndex - startEventIndex + 1).toString().padStart(eventCountString.length, '0')}/{eventCountString}]
+                  </>
+                ),
                 position: (event.date - startEvent.date) / (endEvent.date - startEvent.date)
               };
             })}

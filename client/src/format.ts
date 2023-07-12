@@ -151,13 +151,13 @@ export function formatRemainingDuration(input: number, options?: {
 }
 
 
-export function formatDigitialDisplayWithoutDays(hours: number, minutes: number, seconds: number) {
-  return [hours, minutes]
+export function formatDigitialDisplayWithoutDays(hours: number, minutes: number, seconds: number | null) {
+  return [hours, minutes].concat(seconds ?? [])
     .map((value) => value.toString().padStart(2, '0'))
     .join(':');
 }
 
-export function formatDigitalDisplayAsReact(days: number, hours: number, minutes: number, seconds: number): ReactNode {
+export function formatDigitalDisplayAsReact(days: number, hours: number, minutes: number, seconds: number | null): ReactNode {
   return [
     formatDigitialDisplayWithoutDays(hours, minutes, seconds),
     (days !== 0)
@@ -169,7 +169,7 @@ export function formatDigitalDisplayAsReact(days: number, hours: number, minutes
   ];
 }
 
-export function formatDigitalDisplayAsText(days: number, hours: number, minutes: number, seconds: number) {
+export function formatDigitalDisplayAsText(days: number, hours: number, minutes: number, seconds: number | null) {
   return formatDigitialDisplayWithoutDays(hours, minutes, seconds)
     + ((days !== 0)
       ? formatSuperscript(days, { sign: true })
@@ -186,9 +186,9 @@ export function formatDigitalDisplayAsText(days: number, hours: number, minutes:
  * @param seconds The number of seconds.
  * @param options.format The format to use, either `react` (React nodes) or `text` (plain text).
  */
-export function formatDigitalDisplay(days: number, hours: number, minutes: number, seconds: number, options: { format: 'react'; }): ReactNode;
-export function formatDigitalDisplay(days: number, hours: number, minutes: number, seconds: number, options: { format: 'text'; }): string;
-export function formatDigitalDisplay(days: number, hours: number, minutes: number, seconds: number, options: { format: 'react' | 'text'; }) {
+export function formatDigitalDisplay(days: number, hours: number, minutes: number, seconds: number | null, options: { format: 'react'; }): ReactNode;
+export function formatDigitalDisplay(days: number, hours: number, minutes: number, seconds: number | null, options: { format: 'text'; }): string;
+export function formatDigitalDisplay(days: number, hours: number, minutes: number, seconds: number | null, options: { format: 'react' | 'text'; }) {
   switch (options.format) {
     case 'react':
       return formatDigitalDisplayAsReact(days, hours, minutes, seconds);
@@ -204,9 +204,9 @@ export function formatDigitalDisplay(days: number, hours: number, minutes: numbe
  * @param input The date, in milliseconds.
  * @param ref The reference date used to calculate the day difference, in milliseconds.
  */
-export function formatDigitalDate(input: number, ref: number, options: { format: 'text' }): string;
-export function formatDigitalDate(input: number, ref: number, options: { format: 'react' }): ReactNode;
-export function formatDigitalDate(input: number, ref: number, options: { format: any; }) {
+export function formatDigitalDate(input: number, ref: number, options: { format: 'text'; includeSeconds?: unknown; }): string;
+export function formatDigitalDate(input: number, ref: number, options: { format: 'react'; includeSeconds?: unknown; }): ReactNode;
+export function formatDigitalDate(input: number, ref: number, options: { format: any; includeSeconds?: unknown; }) {
   let date = new Date(input);
 
   let midnight = new Date(ref);
@@ -216,7 +216,7 @@ export function formatDigitalDate(input: number, ref: number, options: { format:
     ? Math.floor((input - midnight.getTime()) / 24 / 3600e3)
     : 0;
 
-    return formatDigitalDisplay(days, date.getHours(), date.getMinutes(), date.getSeconds(), { format: options.format });
+    return formatDigitalDisplay(days, date.getHours(), date.getMinutes(), (options.includeSeconds ? date.getSeconds() : null), { format: options.format });
 }
 
 
@@ -225,9 +225,9 @@ export function formatDigitalDate(input: number, ref: number, options: { format:
  *
  * @param input The time, in milliseconds.
  */
-export function formatDigitalTime(input: number, options: { format: 'text' }): string;
-export function formatDigitalTime(input: number, options: { format: 'react' }): ReactNode;
-export function formatDigitalTime(input: number, options: { format: any; }) {
+export function formatDigitalTime(input: number, options: { format: 'text'; includeSeconds?: unknown; }): string;
+export function formatDigitalTime(input: number, options: { format: 'react'; includeSeconds?: unknown; }): ReactNode;
+export function formatDigitalTime(input: number, options: { format: any; includeSeconds?: unknown; }) {
   let rest = input;
 
   let [hours, minutes, seconds] = CLOCK_TIME_UNITS.map((unit) => {
@@ -239,7 +239,7 @@ export function formatDigitalTime(input: number, options: { format: any; }) {
 
   let days = Math.floor(input / 24 / 3600e3);
 
-  return formatDigitalDisplay(days, hours, minutes, seconds, { format: options.format });
+  return formatDigitalDisplay(days, hours, minutes, (options.includeSeconds ? seconds : null), { format: options.format });
 }
 
 

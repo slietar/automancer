@@ -11,8 +11,10 @@ export function DiscreteSlider(props: {
   }[];
   setCurrentItemIndex(index: number): void;
 }) {
-  // let [currentItemIndex, setCurrentItemIndex] = useState(props.currentItemIndex);
   let [moving, setMoving] = useState(false);
+  let [hoveredItemIndex, setHoveredItemIndex] = useState<number | null>(null);
+
+  let refCursor = useRef<HTMLDivElement>(null);
   let refTrack = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -21,7 +23,6 @@ export function DiscreteSlider(props: {
 
       document.body.addEventListener('mousemove', (event) => {
         event.preventDefault();
-        document.body.style.setProperty('cursor', 'col-resize');
 
         let trackRect = refTrack.current!.getBoundingClientRect();
         let progress = (event.clientX - trackRect.left) / trackRect.width;
@@ -36,18 +37,22 @@ export function DiscreteSlider(props: {
             return !nextItem || (progress < (item.position + nextItem.position) * 0.5);
           }));
         }
+
+        document.body.style.setProperty('cursor', 'col-resize');
       }, { signal: controller.signal });
 
       document.body.addEventListener('mouseup', (event) => {
         event.preventDefault();
-
-        document.body.style.removeProperty('cursor');
         setMoving(false);
       }, { signal: controller.signal });
 
       document.body.addEventListener('mouseleave', () => {
         setMoving(false);
       }, { signal: controller.signal });
+
+      controller.signal.addEventListener('abort', () => {
+        document.body.style.removeProperty('cursor');
+      });
 
       return () => void controller.abort();
     } else {
@@ -57,19 +62,58 @@ export function DiscreteSlider(props: {
 
   let currentItem = props.items[props.currentItemIndex];
 
-  // console.log(props.items);
-  // console.log(props.currentItemIndex);
-
   return (
     <div className={formatClass('DiscreteSlider', { '_active': moving })}>
-      <div className="track" ref={refTrack}>
-        {props.items.map((item, index) => (
-          <div className="marker" key={index} style={{ '--progress': item.position.toFixed(3) } as CSSProperties} />
-        ))}
-        <div className="cursor" style={{ '--progress': currentItem.position.toFixed(3) } as CSSProperties}
-          onMouseDown={() => {
-            setMoving(true);
-          }} />
+      <div className="contents">
+        <div className="track" ref={refTrack}>
+          {props.items.map((item, itemIndex) => (
+            <div
+              className="marker"
+              style={{ '--progress': item.position.toFixed(3) } as CSSProperties}
+              onMouseDown={(event) => {
+                event.preventDefault();
+
+                props.setCurrentItemIndex(itemIndex);
+                refCursor.current!.focus();
+              }}
+              onMouseEnter={() => {
+                setHoveredItemIndex(itemIndex);
+              }}
+              onMouseLeave={() => {
+                setHoveredItemIndex(null);
+              }}
+              key={itemIndex}>
+                <div className="inner" />
+            </div>
+          ))}
+          <div
+            className="cursor"
+            style={{ '--progress': currentItem.position.toFixed(3) } as CSSProperties}
+            tabIndex={-1}
+            onKeyDown={(event) => {
+              switch (event.key) {
+                case 'ArrowLeft':
+                  props.setCurrentItemIndex(Math.max(props.currentItemIndex - 1, 0));
+                  break;
+                case 'ArrowRight':
+                  props.setCurrentItemIndex(Math.min(props.currentItemIndex + 1, props.items.length - 1));
+                  break;
+                default:
+                  return;
+              }
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+            onMouseDown={() => {
+              setMoving(true);
+            }}
+            ref={refCursor} />
+        </div>
+      </div>
+      <div className="description">
+        {(hoveredItemIndex !== null) && !moving
+          ? props.items[hoveredItemIndex].label
+          : currentItem.label}
       </div>
     </div>
   );

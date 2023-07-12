@@ -1,4 +1,3 @@
-import * as React from 'react';
 import { PropsWithChildren, ReactNode, useEffect, useRef, useState } from 'react';
 
 
@@ -15,9 +14,9 @@ export function ExpandableText(props: PropsWithChildren<{
 
   return !width
     ? (
-      <div className="_expanded" style={{ display: 'inline-block' }} ref={ref}>{props.expandedValue ?? props.children}</div>
+      <div className="ExpandableText _expanded" style={{ display: 'inline-block' }} ref={ref}>{props.expandedValue ?? props.children}</div>
     )
     : (
-      <div style={{ display: 'inline-block', width: `${width}px` }}>{props.children}</div>
+      <div className="ExpandableText" style={{ display: 'inline-block', width: `${width}px` }}>{props.children}</div>
     );
 }
