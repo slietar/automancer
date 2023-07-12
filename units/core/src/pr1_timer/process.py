@@ -112,4 +112,6 @@ class Process(am.BaseClassProcess[ProcessData, ProcessLocation, ProcessPoint]):
         else:
           break
 
+      context.send_location(ProcessLocation(total_duration, 1.0))
+
 process = Process()

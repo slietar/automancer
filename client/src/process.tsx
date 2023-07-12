@@ -6,7 +6,7 @@ import { GraphNode } from './components/graph-editor';
 import { Report } from './components/report';
 import { RectSurface } from './geometry';
 import { ProtocolBlockGraphRenderer } from './interfaces/graph';
-import { BlockContext, PluginBlockImpl } from './interfaces/plugin';
+import { BlockContext, GlobalContext, PluginBlockImpl } from './interfaces/plugin';
 import { deepEqual } from './util';
 import { getBlockImpl } from './protocol';
 
@@ -134,7 +134,12 @@ export function createProcessBlockImpl<Data, Location>(options: {
   Component?: ComponentType<{
     context: BlockContext;
     data: Data;
-    date: number;
+    location: Location;
+    status: 'normal' | 'paused';
+  }>;
+  ReportComponent?: ComponentType<{
+    context: GlobalContext;
+    data: Data;
     location: Location;
     status: 'normal' | 'paused';
   }>;
@@ -172,7 +177,6 @@ export function createProcessBlockImpl<Data, Location>(options: {
         return (
           <Component
             data={props.block.data}
-            date={mode.processInfo.date}
             context={props.context}
             location={mode.processInfo.location}
             status={(mode.form === 'paused') ? 'paused' : 'normal'} />
@@ -180,6 +184,31 @@ export function createProcessBlockImpl<Data, Location>(options: {
       }
 
       return null;
+    },
+    ReportComponent(props) {
+      let mode = props.location.mode;
+
+      if (mode.type === 'failed') {
+        return (
+          <p style={{ margin: '1rem 0' }}>An error occured.</p>
+        );
+      }
+
+      let Component = options.ReportComponent;
+
+      if (Component && (mode.type === 'running') && mode.processInfo) {
+        return (
+          <Component
+            data={props.block.data}
+            context={props.context}
+            location={mode.processInfo.location}
+            status={(mode.form === 'paused') ? 'paused' : 'normal'} />
+        );
+      }
+
+      return (
+        <p>Mode: {mode.type}</p>
+      );
     },
     computeGraph,
     createCommands(block, location, context) {

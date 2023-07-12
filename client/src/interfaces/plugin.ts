@@ -83,6 +83,12 @@ export interface PluginBlockImplComponentProps<Block extends ProtocolBlock, Loca
   location: Location;
 }
 
+export interface PluginBlockImplReportComponentProps<Block extends ProtocolBlock, Location> {
+  block: Block;
+  context: GlobalContext;
+  location: Location;
+}
+
 export interface PluginBlockImplAction {
   id: OrdinaryId;
   icon: string;
@@ -101,6 +107,7 @@ export interface PluginBlockImplCommand {
 
 export interface PluginBlockImpl<Block extends ProtocolBlock, Location extends MasterBlockLocation> {
   Component?: ComponentType<PluginBlockImplComponentProps<Block, Location>>;
+  ReportComponent?: ComponentType<PluginBlockImplReportComponentProps<Block, Location>>;
 
   computeGraph?: ProtocolBlockGraphRenderer<Block, Location>;
   createActions?(block: Block, location: Location, context: BlockContext): PluginBlockImplAction[];

@@ -1,4 +1,4 @@
-import { EvaluableValue, Plugin, ProgressDisplayMode, TimeSensitive, TimedProgressBar, createProcessBlockImpl, formatDuration, formatEvaluable } from 'pr1';
+import { EvaluableValue, Plugin, ProgressBar, ProgressDisplayMode, TimeSensitive, TimedProgressBar, createProcessBlockImpl, formatDuration, formatEvaluable } from 'pr1';
 import { PluginName, ProtocolBlockName } from 'pr1-shared';
 
 
@@ -30,7 +30,7 @@ export default {
 
         return (
           <TimedProgressBar
-            date={props.location.date!}
+            date={props.location.date}
             duration={props.location.duration * 1000}
             setValue={(progress) => {
               props.context.pool.add(async () => {
@@ -42,6 +42,19 @@ export default {
                 });
               });
             }}
+            value={props.location.progress} />
+        );
+      },
+      ReportComponent(props) {
+        if (props.location.duration === null) {
+          return null;
+        }
+
+        return (
+          <TimedProgressBar
+            date={null}
+            duration={props.location.duration * 1000}
+            paused={props.location.date === null}
             value={props.location.progress} />
         );
       },

@@ -1,5 +1,7 @@
 @use "sass:math";
 
+@use "../constants" as *;
+
 
 $slider-height: 2px;
 
@@ -19,18 +21,35 @@ $slider-height: 2px;
     border: 1px solid #ddd;
     border-radius: 50%;
 
-    cursor: pointer;
+    cursor: col-resize;
   }
 
-  &._active .cursor {
-    border-color: #0074d9;
+  .marker {
+    width: 8px;
+    aspect-ratio: 1;
+
+    position: absolute;
+    left: calc(var(--progress) * 100%);
+    translate: -50% calc(-50% + math.div($slider-height, 2));
+
+    background-color: #ddd;
+    border-radius: 50%;
+  }
+
+  &:not(._active) .cursor:hover {
     box-shadow: 2px 2px 6px #0001;
   }
 
+  &._active .cursor {
+    border-color: $app-blue;
+    box-shadow: $highlight-shadow;
+  }
+
   .track {
+    height: $slider-height;
     position: relative;
 
     background-color: #ddd;
-    height: $slider-height;
+    border-radius: 2px;
   }
 }

@@ -21,6 +21,7 @@ export function DiscreteSlider(props: {
 
       document.body.addEventListener('mousemove', (event) => {
         event.preventDefault();
+        document.body.style.setProperty('cursor', 'col-resize');
 
         let trackRect = refTrack.current!.getBoundingClientRect();
         let progress = (event.clientX - trackRect.left) / trackRect.width;
@@ -39,6 +40,8 @@ export function DiscreteSlider(props: {
 
       document.body.addEventListener('mouseup', (event) => {
         event.preventDefault();
+
+        document.body.style.removeProperty('cursor');
         setMoving(false);
       }, { signal: controller.signal });
 
@@ -60,15 +63,14 @@ export function DiscreteSlider(props: {
   return (
     <div className={formatClass('DiscreteSlider', { '_active': moving })}>
       <div className="track" ref={refTrack}>
-        <div className="cursor" style={{ '--progress': currentItem.position } as CSSProperties}
+        {props.items.map((item, index) => (
+          <div className="marker" key={index} style={{ '--progress': item.position.toFixed(3) } as CSSProperties} />
+        ))}
+        <div className="cursor" style={{ '--progress': currentItem.position.toFixed(3) } as CSSProperties}
           onMouseDown={() => {
             setMoving(true);
           }} />
       </div>
-
-      {/* {props.items.map((item, index) => (
-        <div className="item" key={index} data-position={item.position.toFixed(3)}>{item.label}</div>
-      ))} */}
     </div>
   );
 }

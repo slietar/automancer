@@ -9,6 +9,7 @@ export interface TimedProgressBarProps {
   date: number | null; // null => paused
   displayMode?: ProgressDisplayMode;
   duration: number;
+  paused?: boolean;
   setValue?(newValue: number): void;
   value: number;
 }
@@ -42,6 +43,7 @@ export class TimedProgressBar extends Component<TimedProgressBarProps, TimedProg
       (nextProps.date !== this.props.date) ||
       (nextProps.displayMode !== this.props.displayMode) ||
       (nextProps.duration !== this.props.duration) ||
+      (nextProps.paused !== this.props.paused) ||
       (nextProps.value !== this.props.value)
     );
   }
@@ -108,7 +110,7 @@ export class TimedProgressBar extends Component<TimedProgressBarProps, TimedProg
           }
         }}
         endDate={endDate}
-        paused={endDate === null}
+        paused={this.props.paused ?? (endDate === null)}
         setValue={this.props.setValue ?? null}
         value={currentValue} />
     );

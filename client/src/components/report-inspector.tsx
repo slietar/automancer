@@ -64,7 +64,7 @@ export function ReportInspector(props: {
     pool.add(async () => {
       let events = await props.host.client.request({
         type: 'getExperimentReportEvents',
-        eventIndices: occurences.flatMap((occurence) => Range(occurence[0], occurence[1]).toArray() as ExperimentReportEventIndex[]),
+        eventIndices: occurences.flatMap((occurence) => Range(occurence[0], occurence[1] + 1).toArray() as ExperimentReportEventIndex[]),
         experimentId: props.experiment.id
       });
 
@@ -140,12 +140,12 @@ export function ReportInspector(props: {
 
                   let occurence = occurences[selection.occurenceIndex];
                   let startEvent = events![occurence[0]];
-                  let lastEvent = events![(occurence[1] - 1) as ExperimentReportEventIndex];
+                  let endEvent = events![occurence[1]];
 
                   return (
                     <>
-                      {formatDateOrTimePair(startEvent.date, lastEvent.date, props.reportInfo.startDate, { display: 'time', format: 'react' })} (
-                      {formatDateOrTimePair(startEvent.date, lastEvent.date, props.reportInfo.startDate, { display: 'date', format: 'react' })})
+                      {formatDateOrTimePair(startEvent.date, endEvent.date, props.reportInfo.startDate, { display: 'time', format: 'react' })} (
+                      {formatDateOrTimePair(startEvent.date, endEvent.date, props.reportInfo.startDate, { display: 'date', format: 'react' })})
                     </>
                   );
                 })()}
@@ -167,11 +167,11 @@ export function ReportInspector(props: {
               </FeatureRoot>
             )}
 
-            {leafBlockImpl.Component && (
+            {leafBlockImpl.ReportComponent && selection && (
               <ErrorBoundary>
-                <leafBlockImpl.Component
+                <leafBlockImpl.ReportComponent
                   block={leafPair.block}
-                  context={null}
+                  context={globalContext}
                   location={leafPair.location} />
               </ErrorBoundary>
             )}
@@ -218,7 +218,7 @@ export function ReportInspector(props: {
       {events && (selection !== null) && (() => {
         let [startEventIndex, endEventIndex] = occurences[selection.occurenceIndex];
         let startEvent = events[startEventIndex];
-        let lastEvent = events[(endEventIndex - 1) as ExperimentReportEventIndex];
+        let endEvent = events[endEventIndex];
 
         return (
           <DiscreteSlider
@@ -230,7 +230,7 @@ export function ReportInspector(props: {
               return {
                 // label: formatDateOrTime(events![startEventIndex + index].date, props.reportInfo.startDate, { display: 'time', format: 'text' }),
                 label: eventIndex.toString(),
-                position: (event.date - startEvent.date) / (lastEvent.date - startEvent.date)
+                position: (event.date - startEvent.date) / (endEvent.date - startEvent.date)
               };
             })}
             setCurrentItemIndex={(itemIndex) => {
