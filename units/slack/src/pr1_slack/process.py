@@ -80,7 +80,7 @@ class Process(am.BaseClassProcess[ProcessData, ProcessLocation, ProcessPoint]):
 
       for data_file in context.data.files:
         with data_file.contents.open(text=False) as file:
-          # TODO: Test what happends when data_file.name is None
+          # TODO: Test what happens when data_file.name is None
 
           response: Any = await asyncio.to_thread(lambda: client.files_upload(
             channels=context.data.settings.channel_id,

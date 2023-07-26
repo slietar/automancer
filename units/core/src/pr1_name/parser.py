@@ -55,6 +55,12 @@ class NameBlock(BaseBlock):
   child: BaseBlock
   name: str
 
+  def __get_node_children__(self):
+    return [self.child]
+
+  def __get_node_name__(self):
+    return "Name"
+
   def create_program(self, handle):
     return TransparentProgram(self.child, handle)
 

@@ -26,8 +26,6 @@ from ..staticanalysis.expression import evaluate_eval_expr
 from ..staticanalysis.support import prelude
 from ..util.misc import Exportable, log_exception
 from .eval import EvalContext, EvalEnvs, EvalOptions, EvalSymbol, EvalVariables
-from .eval import evaluate as dynamic_evaluate
-from .staticeval import evaluate as static_evaluate
 
 expr_regexp = re.compile(r"^([$@%])?{{((?:\\.|[^\\}]|}(?!}))*)}}$")
 escape_regexp = re.compile(r"\\(.)")
@@ -123,13 +121,6 @@ class PythonExpr:
   @functools.cached_property
   def _compiled(self):
     return compile(self.tree, filename="<string>", mode="eval")
-
-  def evaluate(self, options: EvalOptions, mode: Literal['static', 'dynamic'] = 'dynamic'):
-    match mode:
-      case 'dynamic':
-        return dynamic_evaluate(self._compiled, self.contents, options)
-      case 'static':
-        return static_evaluate(self.tree.body, self.contents, options)
 
   def export(self):
     return {
@@ -329,7 +320,7 @@ class EvaluablePythonExpr(Evaluable):
       except EvaluationError as e:
         return DiagnosticAnalysis(errors=[EvalError(self.contents.area, f"{e} ({e.__class__.__name__})")]), Ellipsis
       except InvalidExpressionError:
-        return DiagnosticAnalysis(), Ellipsis
+        return DiagnosticAnalysis(errors=[Diagnostic("Invalid expression", references=[DiagnosticDocumentReference.from_area(self.contents.area)])]), Ellipsis
       else:
         if isinstance(result, ConstantExprEval):
           return DiagnosticAnalysis(), EvaluableConstantValue(LocatedValue.new(result.value, area=self.contents.area, deep=True), symbolic=True)

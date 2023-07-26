@@ -1,19 +1,20 @@
+import ast
 from asyncio import Event
 from dataclasses import dataclass
 from types import EllipsisType
-from typing import Any, Callable, Optional, TypedDict, cast
+from typing import Any, Callable, Literal, Optional, TypeAlias, TypedDict, cast
 
-import pr1 as am
+import automancer as am
 from pr1.error import Diagnostic, DiagnosticDocumentReference
 from pr1.fiber.eval import EvalContext, EvalEnv, EvalEnvValue, EvalStack
-from pr1.fiber.expr import Evaluable
+from pr1.fiber.expr import Evaluable, EvaluableConstantValue
 from pr1.input import (
                                    AnyType, Attribute, KVDictType,
                                    PotentialExprType, PrimitiveType, StrType)
-from pr1.fiber.master2 import ProgramOwner
+from pr1.fiber.master2 import ProgramHandle, ProgramOwner
 from pr1.fiber.parser import (AnalysisContext, Attrs, BaseBlock,
                               BaseLeadTransformer, BaseParser,
-                              BasePassiveTransformer, BaseProgramPoint,
+                              BasePassiveTransformer, BaseProgramLocation, BaseProgramPoint,
                               BlockData, BaseProgram, FiberParser, Layer,
                               LeadTransformerPreparationResult,
                               PassiveTransformerPreparationResult,
@@ -34,22 +35,63 @@ class CircularReferenceError(Diagnostic):
 
 @dataclass(kw_only=True)
 class ShorthandStaticItem:
-  create_layer: Callable[[], tuple[am.LanguageServiceAnalysis, Layer | EllipsisType]]
+  create_layer: Callable[[], tuple[am.LanguageServiceAnalysis, am.Layer | EllipsisType]]
   definition_body_ref: DiagnosticDocumentReference
+  definition_full_ref: DiagnosticDocumentReference
   definition_name_ref: DiagnosticDocumentReference
   deprecated: bool
   description: Optional[str]
-  env: EvalEnv
-  layer: Optional[Layer | EllipsisType] = None
+  layer: Optional[am.Layer | EllipsisType] = None
   preparing: bool = False
   priority: int = 0
-  references: list[DiagnosticDocumentReference]
+  references: list[am.DiagnosticDocumentReference]
+  symbol: am.EvalSymbol
 
 @dataclass(kw_only=True)
 class ShorthandDynamicItem:
   argument: Evaluable[LocatedValue]
   data: BlockData
   name: str
+
+
+@dataclass(frozen=True, slots=True)
+class ArgExprDef(am.BaseExprDef):
+  node: ast.expr
+  symbol: am.EvalSymbol
+
+  @property
+  def type(self):
+    return am.UnknownDef()
+
+  def to_evaluated(self):
+    return ArgEvalExprEval((), self.symbol)
+
+ArgPathItem: TypeAlias = tuple[Literal[False], str] | tuple[Literal[True], int | str]
+ArgPath: TypeAlias = tuple[ArgPathItem, ...]
+
+def apply_path(obj: Any, /, path: ArgPath):
+  current_obj = obj
+
+  for indexed, key in path:
+    current_obj = current_obj[key] if indexed else getattr(current_obj, cast(str, key))
+
+  return current_obj
+
+@dataclass(frozen=True, slots=True)
+class ArgEvalExprEval(am.BaseExprEval):
+  path: ArgPath # boolean = indexed
+  symbol: am.EvalSymbol
+
+  def evaluate(self, stack):
+    if self.symbol in stack:
+      entries: dict[ArgPath, Any] = stack[self.symbol]
+
+      for entry_path, entry_value in entries.items():
+        if entry_path[0:len(self.path)] == self.path:
+          # TODO: Check for errors
+          return am.ConstantExprEval(apply_path(entry_value, entry_path[len(self.path):]))
+
+
 
 
 class Attributes(TypedDict, total=False):
@@ -71,7 +113,7 @@ class LeadTransformer(BaseLeadTransformer):
       assert shorthand.layer
 
       if (not isinstance(shorthand.layer, EllipsisType)) and shorthand.layer.lead_transform:
-        arg_result = analysis.add(PotentialExprType(AnyType()).analyze(arg, context))
+        arg_result = analysis.add(PotentialExprType(AnyType()).analyze(arg, context.update(auto_expr=True)))
 
         if not isinstance(arg_result, EllipsisType):
           call_area = cast(LocatedString, shorthand_name).area
@@ -79,28 +121,28 @@ class LeadTransformer(BaseLeadTransformer):
 
     return analysis, calls
 
-  def adopt(self, data: tuple[ShorthandStaticItem, LocationArea, Any], /, adoption_stack, trace):
+  def adopt(self, data: tuple[ShorthandStaticItem, LocationArea, am.Evaluable], /, adoption_stack, trace):
     analysis = am.LanguageServiceAnalysis()
     shorthand, call_area, arg = data
 
     assert shorthand.layer
     assert not isinstance(shorthand.layer, EllipsisType)
 
-    arg_result = analysis.add(arg.eval(EvalContext(adoption_stack), final=True))
+    arg_result = analysis.add(arg.evaluate_provisional(am.EvalContext(adoption_stack)))
 
     if isinstance(arg_result, EllipsisType):
       return analysis, Ellipsis
 
     block = analysis.add(shorthand.layer.adopt_lead(adoption_stack | {
-      shorthand.env: {
-        'arg': arg_result.value().value
-      }
+      shorthand.symbol: {
+        (): arg_result.inner_value.value
+      } if isinstance(arg_result, am.EvaluableConstantValue) else {}
     }, [*trace, DiagnosticDocumentReference.from_area(call_area)]))
 
     if isinstance(block, EllipsisType):
       return analysis, Ellipsis
 
-    return analysis, block
+    return analysis, ShorthandBlock(arg_result, block, shorthand.symbol)
 
 class PassiveTransformer(BasePassiveTransformer):
   def __init__(self, parser: 'Parser'):
@@ -160,7 +202,7 @@ class PassiveTransformer(BasePassiveTransformer):
     return analysis, current_block
 
 
-class Parser(BaseParser):
+class Parser(am.BaseParser):
   namespace = namespace
 
   root_attributes = {
@@ -222,25 +264,20 @@ class Parser(BaseParser):
 
     if (attr := data.get('shorthands')):
       for name, data_shorthand in attr.items():
+        symbol = self.fiber.allocate_eval_symbol()
+
         env = EvalEnv({
-          # 'arg': EvalEnvValue()
-        }, readonly=True)
+          'arg': am.EvalEnvValue(lambda node: ArgExprDef(node, symbol)),
+          'args': am.EvalEnvValue(lambda node: ArgExprDef(node, symbol))
+        }, symbol=symbol)
 
         create_layer = lambda data_shorthand = data_shorthand, env = env: self.fiber.parse_layer(data_shorthand, envs=[*envs, env], extra_attributes={
-          '_priority': Attribute(
-            PrimitiveType(int),
-            description="Sets the priority of the shorthand. Shorthands with a higher priority are executed before those with a lower priority when running a protocol."
+          '_priority': am.Attribute(
+            am.IntType(),
+            description="Sets the priority of the shorthand. Shorthands with a higher priority are executed before those with a lower priority when running a protocol.",
+            default=0
           )
         }, mode='any')
-
-        # layer_attrs, special_attrs = split_sequence(list(data_shorthand.items()), lambda item: item[0].startswith("_"))
-
-        # result = analysis.add(SimpleDictType({
-        #   '_priority': Attribute(
-        #     PrimitiveType(int),
-        #     description="Sets the priority of the shorthand. Shorthands with a higher priority are executed before those with a lower priority when running a protocol."
-        #   )
-        # }).analyze(dict(special_attrs), AnalysisContext()))
 
         if isinstance(attr, ReliableLocatedDict):
           comments = attr.comments[name]
@@ -254,12 +291,13 @@ class Parser(BaseParser):
 
         self.shorthands[name] = ShorthandStaticItem(
           create_layer=create_layer,
-          definition_body_ref=DiagnosticDocumentReference.from_area(LocationArea([data_shorthand.area.enclosing_range()])),
-          definition_name_ref=DiagnosticDocumentReference.from_area(LocationArea([name.area.single_range()])),
+          definition_body_ref=am.DiagnosticDocumentReference.from_area(LocationArea([data_shorthand.area.enclosing_range()])),
+          definition_full_ref=am.DiagnosticDocumentReference.from_area(LocationArea([(name.area + data_shorthand.area).enclosing_range()])),
+          definition_name_ref=am.DiagnosticDocumentReference.from_area(LocationArea([name.area.single_range()])),
           deprecated=deprecated,
           description=description,
-          env=env,
-          references=list()
+          references=list(),
+          symbol=symbol
         )
 
     return analysis, ProtocolUnitData()
@@ -271,7 +309,7 @@ class Parser(BaseParser):
       if not shorthand.layer:
         analysis.markers.append(am.LanguageServiceMarker(
           "Unused shorthand",
-          shorthand.definition_name_ref,
+          shorthand.definition_full_ref,
           kind='unnecessary'
         ))
 
@@ -300,11 +338,11 @@ class Parser(BaseParser):
 
 
 @dataclass
-class ShorthandProgramPoint(BaseProgramPoint):
-  child: BaseProgramPoint
+class ShorthandProgramPoint(am.BaseProgramPoint):
+  child: am.BaseProgramPoint
 
 @dataclass
-class ShorthandProgramLocation:
+class ShorthandProgramLocation(am.BaseProgramLocation):
   pass
 
   def export(self):
@@ -326,36 +364,45 @@ class ShorthandProgram(BaseProgram):
     else:
       self._bypass_event.set()
 
-  async def run(self, stack):
-    analysis, result = self._block._argument.eval(EvalContext(stack), final=True)
+  async def run(self, point, stack):
+    self._handle.send_location(ShorthandProgramLocation())
 
-    self._handle.send(ProgramExecEvent(analysis=MasterAnalysis.cast(analysis), location=ShorthandProgramLocation()))
+    analysis, result = await self._block.argument.evaluate_final_async(self._handle.context)
+    self._handle.send_analysis(analysis)
 
     if isinstance(result, EllipsisType):
       await self._bypass_event.wait()
-    else:
-      runtime_stack: EvalStack = {
-        **stack,
-        self._block._env: {
-          'arg': result.value
-        }
+      return
+
+    print(result)
+
+    owner = self._handle.create_child(self._block.child)
+
+    await owner.run(point, stack | {
+      self._block.symbol: {
+        (): result.value
       }
+    })
 
-      self._child_program = self._handle.create_child(self._block._child)
-      await self._child_program.run(runtime_stack)
+@dataclass(slots=True)
+class ShorthandBlock(am.BaseBlock):
+  argument: am.Evaluable
+  child: am.BaseBlock
+  symbol: am.EvalSymbol
 
-@debug
-class ShorthandBlock(BaseBlock):
-  Point = ShorthandProgramPoint
-  Program = ShorthandProgram
+  def duration(self):
+    return self.child.duration()
 
-  def __init__(self, child: BaseBlock, /, argument: Evaluable[LocatedValue], env: EvalEnv):
-    self._argument = argument
-    self._child = child
-    self._env = env
+  def create_program(self, handle: ProgramHandle):
+    return ShorthandProgram(self, handle)
 
-  def export(self):
+  def import_point(self, data: Any):
+    return self.child.import_point(data)
+
+  def export(self, context):
     return {
+      "name": "_",
       "namespace": namespace,
-      "child": self._child.export()
+      "child": self.child.export(context),
+      "duration": self.duration().export()
     }

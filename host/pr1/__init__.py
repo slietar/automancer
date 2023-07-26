@@ -13,6 +13,7 @@ from .devices.nodes.value import *
 from .devices.nodes.watcher import *
 from .error import *
 from .eta import *
+from .fiber.eval import *
 from .host import *
 from .input import *
 from .input.dynamic import *

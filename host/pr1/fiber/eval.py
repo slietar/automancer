@@ -22,21 +22,11 @@ class EvalEnv:
   readonly: bool = False
   symbol: 'EvalSymbol'
 
-  def instantiate(self):
-    return EvalEnvInstance(self)
-
   def __hash__(self):
     return id(self)
 
   def __repr__(self):
     return f"{self.__class__.__name__}(name={self.name!r})"
-
-@dataclass
-class EvalEnvInstance:
-  env: EvalEnv
-
-  def __hash__(self):
-    return id(self)
 
 EvalEnvs = list[EvalEnv]
 EvalVariables = dict[str, Any]
@@ -60,8 +50,12 @@ class EvalError(Diagnostic, Exception):
     Diagnostic.__init__(self, f"Evaluation error: {message}", references=[DiagnosticDocumentReference.from_area(area)])
 
 
-def evaluate(compiled: Any, /, contents: LocatedString, options: EvalOptions):
-  try:
-    return LocatedValue.new(eval(compiled, globals(), options.variables), area=contents.area, deep=True)
-  except Exception as e:
-    raise EvalError(contents.area, message=f"{e} ({e.__class__.__name__})") from e
+__all__ = [
+  'EvalContext',
+  'EvalEnv',
+  'EvalEnvs',
+  'EvalEnvValue',
+  'EvalStack',
+  'EvalSymbol',
+  'EvalVariables'
+]

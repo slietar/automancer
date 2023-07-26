@@ -477,8 +477,8 @@ class Layer:
 class AnalysisContext:
   auto_expr: bool = False
   envs: Optional[EvalEnvs] = None
-  eval_context: Optional[EvalContext] = None
-  eval_depth: int = 0
+  eval_context: Optional[EvalContext] = None # @deprecated
+  eval_depth: int = 0 # @deprecated
   symbolic: bool = False
 
   def update(self, **kwargs):
@@ -819,5 +819,6 @@ __all__ = [
   'BaseProgram',
   'BaseProgramLocation',
   'BaseProgramPoint',
+  'Layer',
   'ProcessTransformer'
 ]

@@ -1,46 +1,33 @@
-import { BlockUnit, ProtocolBlock, ProtocolBlockGraphRendererMetrics } from 'pr1';
-import { UnitNamespace } from 'pr1-shared';
+import { Plugin, PluginBlockImpl } from 'pr1';
+import { MasterBlockLocation, PluginName, ProtocolBlock, ProtocolBlockName, createZeroTerm } from 'pr1-shared';
 
 
 export interface Block extends ProtocolBlock {
-  namespace: typeof namespace;
   child: ProtocolBlock;
 }
 
-export type BlockMetrics = ProtocolBlockGraphRendererMetrics;
+export interface Location extends MasterBlockLocation {
 
-export interface Location {
-  children: { 0: unknown; };
 }
 
 
+const namespace = ('shorthands' as PluginName);
 
-const namespace = ('shorthands' as UnitNamespace);
-
-export const unit: BlockUnit<Block, BlockMetrics, Location, never> = {
+export default {
   namespace,
-  graphRenderer: {
-    computeMetrics(block, ancestors, location, options, context) {
-      return options.computeMetrics(block.child, [...ancestors, block], (location?.children[0] ?? null));
-    },
-    render(block, path, metrics, position, location, options, context) {
-      return options.render(block.child, [...path, 0], metrics, position, (location?.children[0] ?? null), options);
-    }
-  },
-  getActiveChildLocation(location, id) {
-    return location.children[0];
-  },
-  getChildBlock(block, key) {
-    return block.child;
-  },
-  getChildrenExecutionRefs(block, location) {
-    return location.children[0]
-      ? [{
-        blockKey: (null as never),
-        executionId: 0
-      }]
-      : [];
+  blocks: {
+    ['_' as ProtocolBlockName]: {
+      getChildren(block, context) {
+        return [{
+          block: block.child,
+          delay: createZeroTerm()
+        }];
+      },
+      getChildrenExecution(block, location, context) {
+        return [{
+          location: location.children[0]
+        }];
+      }
+    } satisfies PluginBlockImpl<Block, Location>
   }
-}
-
-export default unit;
+} satisfies Plugin

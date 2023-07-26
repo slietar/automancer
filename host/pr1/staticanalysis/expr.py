@@ -5,17 +5,19 @@ import functools
 import math
 import os
 from dataclasses import KW_ONLY, dataclass, field
-from typing import Any, AsyncGenerator, Callable, ClassVar, Generic, Optional, Protocol, Self, Sequence, TypeVar
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Callable, ClassVar, Generic, Optional, Protocol, Self, Sequence, TypeVar
 
 from .types import TypeInstance, UnknownDef
+
+if TYPE_CHECKING:
+  from ..fiber.eval import EvalStack, EvalSymbol
 
 
 # Phase 1
 
 class BaseExprDef(ABC):
-  node: ClassVar[Optional[ast.expr]] # If phase > 0, this is just used to obtain the node's location
-  type: ClassVar[TypeInstance]
-  phase: ClassVar[int]
+  node: Optional[ast.expr] # If phase > 0, this is just used to obtain the node's location
+  type: TypeInstance
 
   def get_attribute(self, name: str, /, node: ast.expr) -> 'Optional[BaseExprDef]':
     return None
@@ -77,7 +79,7 @@ class DeferredExprDef(BaseExprDef):
   node: ast.expr
   _: KW_ONLY
   phase: int
-  symbol: int
+  symbol: 'EvalSymbol'
   type: TypeInstance = field(default_factory=UnknownDef)
 
   def to_evaluated(self):
@@ -95,7 +97,7 @@ class InvalidExpressionError(Exception):
 
 class BaseExprEval(ABC):
   @abstractmethod
-  def evaluate(self, stack: dict[int, Any]) -> Self:
+  def evaluate(self, stack: 'EvalStack') -> Self:
     ...
 
   def to_watched(self) -> 'BaseExprWatch':
@@ -152,7 +154,7 @@ class CompositeExprEval(BaseExprEval):
 class DeferredExprEval(BaseExprEval):
   name: str
   phase: int
-  symbol: int
+  symbol: 'EvalSymbol'
 
   def evaluate(self, stack):
     return ConstantExprEval(stack[self.symbol][self.name]) if (self.phase < 1) else self.__class__(self.name, self.phase - 1, self.symbol)
