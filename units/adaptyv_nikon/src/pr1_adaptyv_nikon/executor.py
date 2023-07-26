@@ -15,6 +15,7 @@ macros_dir = Path(__file__).parent / "macros"
 macro_capture = (macros_dir / "capture.mac").open().read()
 macro_inspect = (macros_dir / "inspect.mac").open().read()
 macro_query = (macros_dir / "query.mac").open().read()
+macro_requery = (macros_dir / "requery.mac").open().read()
 
 
 class Conf(Protocol):
@@ -155,4 +156,28 @@ class Executor(am.BaseExecutor):
     )
 
     data = Path(file.name).open(mode="rb").read().decode("utf-16")
+    return np.array([float(point) for point in data[:-1].split(";")]).reshape((chip_count, 4, 3))
+
+  async def requery(self, *, chip_count: int, points: np.ndarray):
+    import win32file
+
+    file = NamedTemporaryFile(delete=False, mode="w")
+    file.close()
+
+    points_code = "\n\n".join([f"  dx[{index}] = {point[0]:.6f};\n  dy[{index}] = {point[1]:.6f};\n  dz[{index}] = {point[2]:.6f};" for index, point in enumerate(points.reshape(-1, 3))])
+
+    await self.run_macro(
+      macro_requery,
+      chip_count=chip_count,
+      chip_point_count=(chip_count * 4),
+      output_path=win32file.GetLongPathName(str(file.name)),
+      points_code=points_code
+    )
+
+    file_path = Path(file.name)
+
+    if file_path.stat().st_size == 0:
+      return None
+
+    data = file_path.open(mode="rb").read().decode("utf-16")
     return np.array([float(point) for point in data[:-1].split(";")]).reshape((chip_count, 4, 3))

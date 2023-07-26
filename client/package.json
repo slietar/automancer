@@ -7,7 +7,7 @@
     "build": "npm run build:css && npm run build:js && npm run build:html && (npm run build:types || true)",
     "build:html": "node scripts/generate-html.js",
     "build:js": "node scripts/build.js",
-    "build:js:watch": "node build.js --watch",
+    "build:js:watch": "node scripts/build.js --watch",
     "build:css": "sass styles/main.scss:lib/styles/index.css --no-source-map",
     "build:css:watch": "sass styles/main.scss:lib/styles/index.css --watch",
     "build:types": "tsc",

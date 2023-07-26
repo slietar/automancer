@@ -15,11 +15,6 @@ export interface ExecutorState {
   optconfs: string[];
 }
 
-export interface Runner {
-  chipCount: number;
-  pointsSaved: number;
-}
-
 export interface ProcessData {
   exposure: number;
   objective: string;
@@ -41,6 +36,24 @@ export default {
       }
     }),
     ['settings' as ProtocolBlockName]: {
+      Component(props) {
+        return (
+          <div>
+            <p>Points saved: {props.location.pointsSaved ? 'yes' : 'no'}</p>
+
+            <Form.Actions>
+              <Form.Action label="Query points" onClick={() => {
+                props.context.sendMessage({ type: 'query' });
+              }} />
+              {props.location.pointsSaved && (
+                <Form.Action label="Change focus" onClick={() => {
+                  props.context.sendMessage({ type: 'requery' });
+                }} />
+              )}
+            </Form.Actions>
+          </div>
+        );
+      },
       createFeatures(block, location, descendantPairs, context) {
         return [{
           icon: 'biotech',
@@ -70,56 +83,12 @@ export default {
     } satisfies PluginBlockImpl<ProtocolBlock & {
       child: ProtocolBlock;
     }, MasterBlockLocation & {
+      pointsSaved: boolean;
       settings: {
         chipCount: number;
         gridColumns: number;
         gridRows: number;
       } | null;
     }>
-  },
-
-  executionPanels: [{
-    id: '_',
-    label: 'Capture',
-    Component(props) {
-      let executor = props.context.host.state.executors[namespace] as ExecutorState;
-      let runner = props.experiment.master!.runners[namespace] as Runner;
-
-      let request = (request: RunnerRequest) => {
-        props.context.pool.add(async () => {
-          await props.context.requestToRunner(request, props.experiment.id);
-        });
-      };
-
-      return (
-        <PanelRoot>
-          <PanelSection>
-            <h2>Capture</h2>
-
-            {/* <h3>Objectives</h3>
-            <ul>{executor.objectives.map((objective) => <li key={objective}>{objective}</li>)}</ul>
-
-            <h3>Optical configurations</h3>
-            <ul>{executor.optconfs.map((optconf) => <li key={optconf}>{optconf}</li>)}</ul> */}
-
-            {/* <h3>Points</h3> */}
-
-            <PanelDataList data={[
-              { label: 'Points saved',
-                value: (runner.pointsSaved ? 'Yes' : 'No') }
-            ]} />
-
-            <Form.Actions>
-              <Form.Action label="Query points" onClick={() => {
-                request({ type: 'queryPoints' });
-              }} />
-              <Form.Action label="Change focus" onClick={() => {
-                request({ type: 'queryPoints' });
-              }} />
-            </Form.Actions>
-          </PanelSection>
-        </PanelRoot>
-      );
-    }
-  }]
+  }
 } satisfies Plugin

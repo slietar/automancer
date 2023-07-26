@@ -13,7 +13,6 @@ export interface Experiment {
   creationDate: number;
   hasReport: boolean;
   master: Master | null;
-  runners: Record<PluginName, unknown>;
   title: string;
 }
 

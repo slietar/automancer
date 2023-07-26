@@ -1,0 +1,52 @@
+int main() {
+  char buf[256];
+  char output[65536];
+  char outputFilePath[256];
+  int chipCount;
+  int chipIndex, chipPointIndex, pointIndex;
+  int i, j;
+  double ax, ay, az;
+  double dx[%(chip_point_count)i], dy[%(chip_point_count)i], dz[%(chip_point_count)i];
+  int cancel;
+
+  cancel = FALSE;
+  chipCount = %(chip_count)i;
+  outputFilePath = "%(output_path)s";
+
+%(points_code)s
+
+  for (chipIndex = 0; chipIndex < chipCount; chipIndex = chipIndex + 1) {
+    for (pointIndex = 0; pointIndex < 4; pointIndex = pointIndex + 1) {
+      i = pointIndex + 1;
+      j = chipIndex + 1;
+      chipPointIndex = chipIndex * 4 + pointIndex;
+
+      ax = dx[chipPointIndex];
+      ay = dy[chipPointIndex];
+
+      StgMoveXY(ax, ay, MOVE_ABSOLUTE);
+      StgMoveZ(dz[chipPointIndex], MOVE_ABSOLUTE);
+
+      sprintf(&buf, "Set focus of point %%d of chip %%d", "i, j");
+
+      if (Int_Question("", &buf, "Cancel", "Next", "", "", 2, 0) == 1) {
+        cancel = TRUE;
+        chipIndex = chipCount;
+        goto xa;
+      }
+
+      StgGetPosZ(&az, 0);
+
+      dz[chipPointIndex] = az;
+
+      sprintf(&buf, "%%f;%%f;%%f;", "ax, ay, az");
+      strcat(&output, &buf);
+    }
+
+    xa:
+  }
+
+  if (!cancel) {
+    WriteFile(&outputFilePath, &output, strlen(&output) * 2);
+  }
+}
