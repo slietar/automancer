@@ -1,4 +1,5 @@
 import asyncio
+from dataclasses import dataclass
 import os
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -25,6 +26,7 @@ class Executor(am.BaseExecutor):
     'nis_path': am.Attribute(am.StrType(), default=r"C:\Program Files\NIS-Elements\nis_ar.exe")
   })
 
+  # TODO: Add a boolean parameter that tells whether the plugin is in development mode
   def __init__(self, conf, *, host):
     executor_conf: Conf = conf.dislocate()
 
@@ -37,10 +39,13 @@ class Executor(am.BaseExecutor):
     self._optconfs: Optional[list[str]] = None
 
   async def start(self):
-    if os.name != "nt":
-      raise Exception("NIS-Elements is only available on Windows")
+    # if os.name != "nt":
+    #   raise Exception("NIS-Elements is only available on Windows")
 
-    self._objectives, self._optconfs = await self.inspect()
+    # self._objectives, self._optconfs = await self.inspect()
+    self._objectives = ["Plan Apo λ 10x/0.45", "Plan Apo λ 20x/0.75", "Plan Apo λ 40x/0.95", "Plan Apo λ 60x/1.40 Oil", "Plan Apo λ 100x/1.45 Oil"]
+    self._optconfs = ["DIC", "Fluorescence"]
+
     logger.debug(f"Found {len(self._objectives)} objectives and {len(self._optconfs)} optical configurations")
 
     yield

@@ -1,5 +1,5 @@
-import { Form, PanelDataList, PanelRoot, PanelSection, Plugin, createProcessBlockImpl } from 'pr1';
-import { PluginName, ProtocolBlockName } from 'pr1-shared';
+import { Form, PanelDataList, PanelRoot, PanelSection, Plugin, PluginBlockImpl, createProcessBlockImpl } from 'pr1';
+import { MasterBlockLocation, PluginName, ProtocolBlock, ProtocolBlockName, createZeroTerm } from 'pr1-shared';
 import { useState } from 'react';
 
 
@@ -32,24 +32,58 @@ const namespace = ('adaptyv_nikon' as PluginName);
 export default {
   namespace,
   blocks: {
-    ['_' as ProtocolBlockName]: createProcessBlockImpl<ProcessData, never>({
+    ['capture' as ProtocolBlockName]: createProcessBlockImpl<ProcessData, never>({
       createFeatures(data, location) {
         return [{
           icon: 'biotech',
           label: 'Capture'
         }];
       }
-    })
+    }),
+    ['settings' as ProtocolBlockName]: {
+      createFeatures(block, location, descendantPairs, context) {
+        return [{
+          icon: 'biotech',
+          ...(location?.settings
+            ? {
+              description: 'Capture settings',
+              label: location?.settings
+                ? `${location.settings.chipCount} chip${location.settings.chipCount > 1 ? 's' : ''}, ${location.settings.gridColumns}x${location.settings.gridRows} grid`
+                : null
+            }
+            : {
+              label: 'Capture settings',
+            })
+        }]
+      },
+      getChildren(block, context) {
+        return [{
+          block: block.child,
+          delay: createZeroTerm()
+        }];
+      },
+      getChildrenExecution(block, location, context) {
+        return [{
+          location: location.children[0]
+        }];
+      }
+    } satisfies PluginBlockImpl<ProtocolBlock & {
+      child: ProtocolBlock;
+    }, MasterBlockLocation & {
+      settings: {
+        chipCount: number;
+        gridColumns: number;
+        gridRows: number;
+      } | null;
+    }>
   },
 
   executionPanels: [{
     id: '_',
-    label: 'Imaging',
+    label: 'Capture',
     Component(props) {
       let executor = props.context.host.state.executors[namespace] as ExecutorState;
-      let runner = props.experiment.runners[namespace] as Runner;
-
-      let [rawChipCount, setRawChipCount] = useState(runner.chipCount.toString());
+      let runner = props.experiment.master!.runners[namespace] as Runner;
 
       let request = (request: RunnerRequest) => {
         props.context.pool.add(async () => {
@@ -60,39 +94,29 @@ export default {
       return (
         <PanelRoot>
           <PanelSection>
-            <h2>Imaging</h2>
+            <h2>Capture</h2>
 
-            <p>Objectives: {executor.objectives.map((objective) => <li>{objective}</li>).join(', ')}</p>
-            <p>Optical configurations: {executor.optconfs.map((optconf) => <li>{optconf}</li>).join(', ')}</p>
+            {/* <h3>Objectives</h3>
+            <ul>{executor.objectives.map((objective) => <li key={objective}>{objective}</li>)}</ul>
+
+            <h3>Optical configurations</h3>
+            <ul>{executor.optconfs.map((optconf) => <li key={optconf}>{optconf}</li>)}</ul> */}
+
+            {/* <h3>Points</h3> */}
 
             <PanelDataList data={[
-              {
-                label: 'Points saved',
-                value: (runner.pointsSaved ? 'Yes' : 'No')
-              }
+              { label: 'Points saved',
+                value: (runner.pointsSaved ? 'Yes' : 'No') }
             ]} />
-          </PanelSection>
 
-          <PanelSection>
-            <Form.Form>
-              <Form.TextField
-                label="Chip count"
-                onBlur={() => {
-                  let chipCount = parseInt(rawChipCount);
-
-                  if ((chipCount > 0) && (chipCount <= 5) && (chipCount.toString() === rawChipCount.trim())) {
-                    request({ type: 'set', chipCount });
-                    setRawChipCount(chipCount.toString());
-                  } else {
-                    setRawChipCount(runner.chipCount.toString());
-                  }
-                }}
-                onInput={(value) => void setRawChipCount(value)}
-                value={rawChipCount} />
+            <Form.Actions>
               <Form.Action label="Query points" onClick={() => {
                 request({ type: 'queryPoints' });
               }} />
-            </Form.Form>
+              <Form.Action label="Change focus" onClick={() => {
+                request({ type: 'queryPoints' });
+              }} />
+            </Form.Actions>
           </PanelSection>
         </PanelRoot>
       );

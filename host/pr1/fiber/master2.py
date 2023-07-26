@@ -169,6 +169,7 @@ class Master:
       "location": self._location,
       "masterAnalysis": self._master_analysis.export(),
       "protocol": self.protocol.export(GlobalContext(self.host)),
+      "runners": { namespace: runner.export() for namespace, runner in self.runners.items() },
       "startDate": (self.start_time * 1000)
     }
 
@@ -379,6 +380,15 @@ class ProgramHandle:
   @property
   def master(self) -> Master:
     return self._parent.master if isinstance(self._parent, ProgramHandle) else self._parent
+
+  def ancestor(self, *, type: type[T]) -> Optional[T]:
+    handle = self
+
+    while not isinstance(handle := handle._parent, Master):
+      if isinstance(handle._program, type):
+        return handle._program
+
+    return None
 
   def ancestors(self, *, include_self: bool = False, type: Optional[type[T]] = None):
     reversed_ancestors = list[T]()

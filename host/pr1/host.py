@@ -19,9 +19,10 @@ from .fiber.parser import AnalysisContext, GlobalContext
 from .input import (Attribute, BoolType, KVDictType, PrimitiveType, RecordType,
                     StrType, UnionType)
 from .langservice import LanguageServiceAnalysis
-from .plugin.manager import PluginManager
+from .plugin.manager import PluginManager, PluginName
 from .util.misc import create_datainstance
 from .util.pool import Pool
+from .units.base import BaseExecutor
 
 
 class HostRootNode(CollectionNode):
@@ -151,7 +152,7 @@ class Host:
 
     # -- Load units ---------------------------------------
 
-    self.executors = dict()
+    self.executors = dict[PluginName, BaseExecutor]()
     self.manager = PluginManager(reader.LocatedValue(plugins_conf, raw_conf.area))
 
     logger.info(f"Loaded {len(self.manager.plugins)} plugins")

@@ -381,7 +381,7 @@ class DivisibleCompositeDictType(Type, Generic[T]):
         case (False, (False, _)):
           self._attributes_by_name[attr_name] = (True, None)
         case (True, (True, _)):
-          raise ValueError("Duplicate name")
+          raise ValueError(f"Duplicate name '{attr_name}'")
 
   def analyze(self, obj, /, context):
     analysis = LanguageServiceAnalysis()

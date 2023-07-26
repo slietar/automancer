@@ -93,6 +93,22 @@ class ProcessContext(Generic[T_ProcessData, T_ProcessLocation, T_ProcessPoint]):
   def data(self):
     return self._data
 
+  @property
+  def handle(self):
+    return self._program._handle
+
+  @property
+  def host(self):
+    return self._program._handle.master.host
+
+  @property
+  def executor(self):
+    return self.host.executors.get(self._program._block._process.namespace)
+
+  @property
+  def runner(self):
+    return self._program._handle.master.runners.get(self._program._block._process.namespace)
+
   @functools.cached_property
   def logger(self):
     instance_number = self.__class__._instance_number
@@ -507,7 +523,7 @@ class ProcessProgram(BaseProgram):
         self._point = e.point
       except ProcessFailureError as e:
         error_id = self._handle.master.allocate_analysis_item_id()
-        error = Diagnostic(repr(e.__cause__) if e.__cause__ else "Unknown error", id=error_id)
+        error = Diagnostic(e.message or (repr(e.__cause__) if e.__cause__ else "Unknown error"), id=error_id)
 
         self._mode = ProcessProgramMode.Failed(error_id)
         self._handle.send_analysis(RuntimeAnalysis(errors=[error]))

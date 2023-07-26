@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, cast
 
 import automancer as am
 import numpy as np
@@ -9,7 +9,7 @@ from .executor import Executor
 
 class Runner(am.BaseRunner):
   def __init__(self, master):
-    self._executor: Executor = master.host.executors[namespace]
+    self._executor = cast(Executor, master.host.executors[namespace])
     self._master = master
 
     self._chip_count = 1

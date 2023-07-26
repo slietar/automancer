@@ -815,10 +815,15 @@ class FiberParser:
 
 __all__ = [
   'BaseBlock',
+  'BaseLeadTransformer',
   'BaseParser',
+  'BasePartialPassiveTransformer',
+  'BasePassiveTransformer',
   'BaseProgram',
   'BaseProgramLocation',
   'BaseProgramPoint',
+  'BaseTransformer',
+  'BaseTransformers',
   'Layer',
   'ProcessTransformer'
 ]
