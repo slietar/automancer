@@ -27,12 +27,9 @@
     "monaco-editor": "^0.34.0",
     "object-hash": "^3.0.0",
     "pr1-shared": "file:../app/shared",
-    "quantops": "^0.2.0",
+    "quantops": "^0.3.0",
     "react-merge-refs": "^1.1.0",
-    "react-split-grid": "^1.0.4",
-    "seq-ord": "^0.2.0",
-    "xterm": "^4.18.0",
-    "xterm-addon-fit": "^0.5.0"
+    "seq-ord": "^0.2.0"
   },
   "devDependencies": {
     "@types/react": "^18.0.14",

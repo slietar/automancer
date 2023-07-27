@@ -1,26 +1,10 @@
-import asyncio
 import bisect
 from asyncio import Event, Future, Task
-from dataclasses import KW_ONLY, dataclass, field
+from dataclasses import dataclass, field
 from logging import Logger
-from types import EllipsisType
-from typing import Any, Callable, Optional, Self
+from typing import Optional, Self
 
 import automancer as am
-from pr1.devices.claim import Claim
-from pr1.devices.nodes.numeric import NumericNode
-from pr1.devices.nodes.common import BaseNode, NodePath
-from pr1.devices.nodes.primitive import BooleanNode, EnumNode
-from pr1.devices.nodes.value import Null, ValueNode
-from pr1.error import Diagnostic
-from pr1.fiber.eval import EvalContext
-from pr1.fiber.expr import export_value
-from pr1.fiber.master2 import Master
-from pr1.host import Host
-from pr1.units.base import BaseRunner
-from pr1.util.asyncio import race, run_anonymous, wait_all
-from pr1.util.decorators import provide_logger
-from .parser import ValueNodeValueDependency
 
 from . import logger
 from .program import PublisherProgram, ValueNodeValue
@@ -31,7 +15,7 @@ PublisherTrace = tuple[PublisherProgram, ...]
 @dataclass
 class Declaration:
   # Value is None => The value to set is unknown, keep the node claimed but with an undefined value.
-  assignments: dict[ValueNode, Optional[am.NullType | object]]
+  assignments: dict[am.ValueNode, Optional[am.NullType | object]]
   trace: PublisherTrace
   active: bool = True
   applied: bool = False
@@ -43,19 +27,19 @@ class Declaration:
 @dataclass
 class NodeInfo:
   candidate_count: int = 0
-  claim: Optional[Claim] = None
+  claim: Optional[am.Claim] = None
   current_value: Optional[ValueNodeValue] = None
   update_event: Event = field(default_factory=Event)
   worker_task: Optional[Task[None]] = None
 
 
-@provide_logger(logger)
+@am.provide_logger(logger)
 class Runner(am.BaseRunner):
   def __init__(self, master):
     self._master = master
 
     self._declarations = list[Declaration]()
-    self._node_infos = dict[ValueNode, NodeInfo]()
+    self._node_infos = dict[am.ValueNode, NodeInfo]()
 
     self._logger: Logger
     self._pool: am.Pool
@@ -71,7 +55,7 @@ class Runner(am.BaseRunner):
 
   # Publisher methods
 
-  def add(self, trace: PublisherTrace, assignments: dict[ValueNode, ValueNodeValue]):
+  def add(self, trace: PublisherTrace, assignments: dict[am.ValueNode, ValueNodeValue]):
     declaration = Declaration(assignments, trace)
     bisect.insort(self._declarations, declaration)
 
@@ -118,10 +102,10 @@ class Runner(am.BaseRunner):
           node_info.worker_task.cancel()
           node_info.worker_task = None
 
-  async def _node_worker(self, node: ValueNode, node_info: NodeInfo):
+  async def _node_worker(self, node: am.ValueNode, node_info: NodeInfo):
     self._logger.debug(f"Launching worker of node with id '{node.id}'")
 
-    node_info.claim = node.claim(marker=self._master)
+    node_info.claim = node.writer.claim(marker=self._master)
 
     try:
       while True:
@@ -129,10 +113,16 @@ class Runner(am.BaseRunner):
         # info.current_candidate.item_info.notify(NodeStateLocation(info.current_candidate.value))
 
         while True:
-          await node_info.update_event.wait()
-          node_info.update_event.clear()
+          winner_index, _ = await am.race(
+            node_info.update_event.wait(),
+            node_info.claim.lost()
+          )
 
-          node.writer.set(node_info.current_value)
+          if winner_index == 1:
+            break
+
+          node_info.update_event.clear()
+          node.writer.write(node_info.current_value)
     finally:
       node_info.claim.destroy()
       node_info.claim = None

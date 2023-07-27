@@ -52,13 +52,7 @@ class ValueNode(BaseNode, ABC, Generic[T]):
       self._read_lock = Lock()
 
     if self.writable:
-      self.claimable = Claimable(change_callback=self._claim_change)
-      self._writer: Optional[NodeValueWriter] = None
-
-  # Internal
-
-  def _claim_change(self):
-    self._trigger_listeners(mode='ownership')
+      self.writer: NodeValueWriter[T]
 
   # To be implemented
 
@@ -113,12 +107,6 @@ class ValueNode(BaseNode, ABC, Generic[T]):
     time_after = time.time()
 
     self.value = ((time_before + time_after) * 0.5, value)
-
-  def claim(self, marker: Optional[Any] = None, *, force: bool = False):
-    if not self.writable:
-      raise NotImplementedError
-
-    return self.claimable.claim(marker, force=force)
 
   async def read(self):
     """
@@ -200,14 +188,15 @@ class ValueNode(BaseNode, ABC, Generic[T]):
 class NodeValueWriterError(IntEnum):
   Disconnected = 0
 
-class NodeValueWriter(Generic[T]):
+class NodeValueWriter(Claimable, Generic[T]):
   def __init__(self, node: ValueNode[T]):
-    self.node = node
+    super().__init__(change_callback=self._claim_change)
 
+    self.node = node
     self.error: Optional[NodeValueWriterError] = None
 
     # outer None -> target value is implicitly undefined (= never called write())
-    # inner None -> target value is explicitly undefined (= don't care)
+    # inner None -> target value is explicitly undefined (= don't care or unclaimed)
     self.target_value: Optional[tuple[float, Optional[T | NullType]]] = None
 
     self._change_event = Event()
@@ -221,11 +210,17 @@ class NodeValueWriter(Generic[T]):
   async def wait_unsettled(self):
     await self._settle_event.wait_unset()
 
-  def set(self, value: Optional[T | NullType], /):
+  def write(self, value: Optional[T | NullType], /):
     self.target_value = (time.time(), value)
     self._change_event.set()
 
     self.node._trigger_listeners(mode='target')
+
+  def _claim_change(self):
+    self.node._trigger_listeners(mode='ownership')
+
+    if not self.owner():
+      self.write(None)
 
   async def _worker(self):
     from .watcher import Watcher

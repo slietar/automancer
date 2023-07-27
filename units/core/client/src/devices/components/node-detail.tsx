@@ -1,12 +1,12 @@
 import * as d3 from 'd3';
 import * as fc from 'd3fc';
-import { Button, Form, Icon, OldStaticSelect, ureg, util } from 'pr1';
+import { Button, Form, Icon, StaticSelect, ureg, util } from 'pr1';
 import { Component, ReactNode, createElement, createRef, useEffect, useRef, useState } from 'react';
 import { OrdinaryId } from 'pr1-shared';
 
 import styles from '../styles.module.scss';
 
-import { BaseNode, BooleanValue, Context, EnumValue, ExecutorState, NodePath, NodeState, NumericNodeSpec, namespace } from '../types';
+import { BaseNode, BooleanValue, Context, EnumValue, ExecutorState, NodePath, NodeState, NullableValue, NumericNodeSpec, ValueEvent, ValueNode, namespace } from '../types';
 import { isValueNode } from '../util';
 import { NumericValue } from '../types';
 
@@ -225,14 +225,17 @@ export class NodeDetail extends Component<NodeDetailProps, NodeDetailState> {
                 <div className={styles.detailInfoValue}>{(() => {
                   if (!owner) {
                     return '\u2013';
-                  } if (owned) {
-                    return 'You';
-                  } if (owner.type === 'master') {
-                    let experiment = this.props.context.host.state.experiments[owner.experimentId];
-                    return `Experiment ${experiment.title}`;
                   }
 
-                  return '[Unknown]';
+                  switch (owner.type) {
+                    case 'master':
+                      let experiment = this.props.context.host.state.experiments[owner.experimentId];
+                      return `Experiment ${experiment.title}`;
+                    case 'user':
+                      return 'Manual control';
+                    default:
+                      return '[Unknown]';
+                  }
                 })()}</div>
               </div>
             )}
@@ -332,10 +335,10 @@ export class NodeDetail extends Component<NodeDetailProps, NodeDetailState> {
                   {(() => {
                     let targetValueEvent = nodeState.writer!.targetValueEvent;
 
-                    let setValue = (value: unknown) => {
+                    let setValue = <T,>(value: NullableValue<T>) => {
                       this.props.context.pool.add(async () => {
                         this.props.context.requestToExecutor({
-                          type: 'set',
+                          type: 'write',
                           nodePath: nodePath.toJS(),
                           value
                         });
@@ -343,43 +346,69 @@ export class NodeDetail extends Component<NodeDetailProps, NodeDetailState> {
                     };
 
                     switch (node.spec.type) {
-                      case 'boolean':
+                      case 'boolean': {
+                        let currentValueId = (targetValueEvent?.value?.type === 'default')
+                          ? ((targetValueEvent.value.innerValue as boolean) ? 1 : 0)
+                          : null;
+
                         return (
                           <Form.UncontrolledSelect
-                            onInput={(value) => void setValue((value !== null) ? [false, true][value] : null)}
+                            onInput={(value) => void setValue<BooleanValue>(
+                              (value !== null)
+                                ? { type: 'default', innerValue: [false, true][value] }
+                                : { type: 'null' }
+                            )}
                             options={[
-                              { id: null,
-                                label: '\u2013' },
+                              ...((currentValueId === null) || node.nullable
+                                ? [{
+                                  id: null,
+                                  label: '\u2013'
+                                }]
+                                : []),
                               { id: 0,
                                 label: 'Off' },
                               { id: 1,
                                 label: 'On' }
                             ]}
-                            value={(targetValueEvent?.value?.type === 'default') ? ((targetValueEvent.value.innerValue as boolean) ? 1 : 0) : null} />
+                            value={currentValueId} />
                         );
+                      }
 
                       case 'numeric':
                         return (
                           <NumericValueEditor
+                            node={node}
                             nodeState={nodeState}
-                            spec={node.spec}
-                            onInput={(value) => void setValue(value)} />
+                            setValue={setValue<NumericValue>} />
                         );
 
-                      case 'enum':
+                      case 'enum': {
+                        let currentValueId = (targetValueEvent?.value?.type === 'default')
+                          ? (targetValueEvent.value.innerValue as OrdinaryId)
+                          : null;
+
                         return (
                           <Form.UncontrolledSelect
-                            onInput={(value) => void setValue(value)}
+                            onInput={(value) => void setValue<EnumValue>(
+                              (value !== null)
+                                ? { type: 'default', innerValue: value }
+                                : { type: 'null' }
+                            )}
                             options={[
-                              { id: null,
-                                label: '\u2013' },
+                              ...((currentValueId === null) || node.nullable
+                                ? [{
+                                  id: null,
+                                  label: '\u2013'
+                                }]
+                                : []),
                               ...node.spec.cases.map((specCase) => ({
                                 id: specCase.id,
                                 label: (specCase.label ?? specCase.id.toString())
                               }))
                             ]}
-                            value={(targetValueEvent?.value?.type === 'default') ? (targetValueEvent.value.innerValue as OrdinaryId) : null} />
+                            value={currentValueId} />
                         );
+                      }
                     }
                   })()}
                 </div>
@@ -396,23 +425,27 @@ export class NodeDetail extends Component<NodeDetailProps, NodeDetailState> {
 const MINUS_CLUSTER = '\u2212\u2009'; // &minus;&thinsp;
 
 function NumericValueEditor(props: {
+  node: ValueNode;
   nodeState: NodeState;
-  onInput(value: number | null): void;
-  spec: NumericNodeSpec;
+  setValue(value: NullableValue<NumericValue>): void;
 }) {
   let [rawValue, setRawValue] = useState<{
     input: string;
     optionIndex: number;
   } | null>(null);
-
+  let [projectedValueEvent, setProjectedValueEvent] = useState<ValueEvent | null>(null);
   let refInput = useRef<HTMLInputElement>(null);
 
-  let range = props.spec.range!;
+  let spec = props.node.spec as NumericNodeSpec;
+  let writer = props.nodeState.writer!;
+  let range = spec.range!;
+
   let unitOptions = ureg.filterRangeCompositeUnitFormats(
     range[0],
     range[1],
-    ureg.deserializeContext(props.spec.context),
-    { system: 'SI' }
+    ureg.deserializeContext(spec.context),
+    { resolution: (spec.resolution ?? 0),
+      system: 'SI' }
   ).map((option, index) => ({
     id: index,
     label: ureg.formatAssemblyAsText(option.assembly),
@@ -429,19 +462,25 @@ function NumericValueEditor(props: {
   }, [rawValue]);
 
 
-  let currentTargetValue = (props.nodeState.writer!.targetValueEvent?.value?.type === 'default')
-    ? (props.nodeState.writer!.targetValueEvent.value.innerValue as NumericValue).magnitude
+  let currentTargetValueEvent = (writer.targetValueEvent && projectedValueEvent)
+    ? ((writer.targetValueEvent.time > projectedValueEvent.time)
+      ? writer.targetValueEvent
+      : projectedValueEvent)
+    : (writer.targetValueEvent ?? projectedValueEvent);
+
+  let currentTargetValue = (currentTargetValueEvent?.value?.type === 'default')
+    ? (currentTargetValueEvent.value.innerValue as NumericValue).magnitude
     : null;
 
   let currentMagnitude: string;
   let currentOptionIndex: number;
 
   if (currentTargetValue !== null) {
-    let context = ureg.deserializeContext(props.spec.context);
+    let context = ureg.deserializeContext(spec.context);
     let variant = ureg.findVariant(ureg.getContext(context), { system: 'SI' });
     let currentOption = ureg.findBestVariantOption(currentTargetValue, variant);
 
-    currentMagnitude = ureg.formatMagnitude(currentTargetValue, (props.spec.resolution ?? 0), currentOption);
+    currentMagnitude = ureg.formatMagnitude(currentTargetValue, (spec.resolution ?? 0), currentOption);
     currentOptionIndex = unitOptions.findIndex((option) => (option.value.value === currentOption.value));
   } else {
     currentMagnitude = '\u2013';
@@ -462,6 +501,26 @@ function NumericValueEditor(props: {
   }
 
 
+  let trySubmitValue = () => {
+    if ((floatValue !== null) && floatValueInRange) {
+      let value: NullableValue<NumericValue> = {
+        type: 'default',
+        innerValue: {
+          magnitude: floatValue
+        }
+      };
+
+      props.setValue(value);
+
+      setRawValue(null);
+      setProjectedValueEvent({
+        time: (currentTargetValueEvent?.time ?? 0),
+        value
+      });
+    }
+  };
+
+
   return (
     <>
       <div className={util.formatClass(styles.detailValueQuantity, { '_active': rawValue })}>
@@ -478,7 +537,9 @@ function NumericValueEditor(props: {
               event.currentTarget.select();
 
               setRawValue({
-                input: currentMagnitude,
+                input: (currentTargetValue !== null)
+                  ? currentMagnitude
+                  : '',
                 optionIndex: currentOptionIndex
               });
             }
@@ -514,24 +575,21 @@ function NumericValueEditor(props: {
             }
 
             if (event.key === 'Enter') {
-              if ((floatValue !== null) && floatValueInRange) {
-                props.onInput(floatValue);
-                setRawValue(null);
-              }
+              trySubmitValue();
             }
           }}
           ref={refInput} />
         <div className={styles.detailValueRight}>
-          <OldStaticSelect
+          <StaticSelect
             disabled={!selectActive}
             options={unitOptions}
             rootClassName={styles.detailValueUnitSelectRoot}
-            selectOption={(option, optionIndex) => void setRawValue({ ...rawValue!, optionIndex: optionIndex })}
-            selectedOption={unitOptions[rawValue?.optionIndex ?? 0]}
+            selectOption={(optionId) => void setRawValue({ ...rawValue!, optionIndex: optionId })}
+            selectedOptionId={rawValue?.optionIndex ?? 0}
             selectionClassName={styles.detailValueUnitSelectSelection}>
             <div className={styles.detailValueUnit}>{ureg.formatAssemblyAsReact(unitOptions[rawValue?.optionIndex ?? currentOptionIndex].value.assembly, { createElement })}</div>
             {selectActive && <Icon name="height" className={styles.detailValueUnitSelectIcon} />}
-          </OldStaticSelect>
+          </StaticSelect>
         </div>
       </div>
       {rawValue && (() => {
@@ -541,7 +599,7 @@ function NumericValueEditor(props: {
           if (!floatValueInRange) {
             error = (
               <>
-                The target value must be in the range {ureg.formatRangeAsReact(range[0], range[1], (props.spec.resolution ?? 0), ureg.deserializeContext(props.spec.context), { createElement })}.
+                The target value must be in the range {ureg.formatRangeAsReact(range[0], range[1], (spec.resolution ?? 0), ureg.deserializeContext(spec.context), { createElement })}.
               </>
             );
           }
@@ -563,10 +621,7 @@ function NumericValueEditor(props: {
                 disabled={error}
                 shortcut="Enter"
                 onClick={() => {
-                  if ((floatValue !== null) && floatValueInRange) {
-                    props.onInput(floatValue);
-                    setRawValue(null);
-                  }
+                  trySubmitValue();
                 }}>
                 Confirm
               </Button>
@@ -575,6 +630,14 @@ function NumericValueEditor(props: {
           </>
         );
       })()}
+
+      {props.node.nullable && (writer.targetValueEvent?.value?.type !== 'null') && !rawValue && (
+        <div className={styles.detailValueActions}>
+          <Button onClick={() => {
+            props.setValue({ type: 'null' });
+          }}>Disable</Button>
+        </div>
+      )}
     </>
   );
 }

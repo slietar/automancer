@@ -120,14 +120,14 @@
   &Info {
     &Root {
       display: grid;
-      grid-auto-columns: 220px;
-      grid-auto-flow: column;
+      column-gap: 1rem;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
 
       margin: 1rem 0;
-    }
+      padding: 0.8rem 1rem;
 
-    &Entry {
-
+      border: 1px solid #ddd;
+      border-radius: 4px;
     }
 
     &Label {
@@ -136,22 +136,43 @@
       font-weight: 600;
       text-transform: uppercase;
     }
+
+    &Value {
+      @include text-ellipsis();
+    }
   }
 
   &Values {
-    display: grid;
+    display: flex;
     column-gap: 1rem;
-    grid-auto-columns: 200px;
-    grid-auto-flow: column;
 
     margin: 2rem 0;
   }
 
   &Value {
+    // .detailValues
+    //   .detailValueRoot (+)
+    //     .detailValueLabel
+    //     .detailValueQuantity
+    //       .detailValueMagnitude
+    //       .detailValueUnit
+    //
+    //   .detailValueRoot (+)
+    //     .detailValueLabel
+    //     .detailValueQuantity[._active]
+    //       .detailValueBackground
+    //       input.detailValueMagnitude
+    //       .detailValueRight
+    //         .detailValueUnitSelectRoot
+    //           .detailValueUnitSelectSelection
+    //             .detailValueUnit
+    //         select
+
+
     &Root {
-      // padding: 2rem;
-      // background-color: #fafafa;
-      // border-radius: 8px;
+      max-width: 220px;
+      flex-basis: 220px;
+      flex-grow: 0;
     }
 
     &Label {

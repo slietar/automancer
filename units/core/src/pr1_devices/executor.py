@@ -7,36 +7,47 @@ from quantops import Quantity
 from . import logger
 
 
+ClaimKey = tuple[Any, am.ValueNode]
+
 class Executor(am.BaseExecutor):
   def __init__(self, conf, *, host: am.Host):
     self._channels = set()
-    self._claims = dict[tuple[Any, am.ValueNode], am.Claim]()
+    self._claims = dict[ClaimKey, am.Claim]()
     self._host = host
 
     # from .mock import MockDevice
     # dev = MockDevice()
     # self._host.devices[dev.id] = dev
 
+  def _claim_node(self, node: am.ValueNode, /, agent: Any):
+    key: ClaimKey = agent, node
+
+    if not key in self._claims:
+      claim = node.writer.claim(agent, force=True)
+      self._claims[key] = claim
+
+      agent.pool.start_soon(self._node_claim_worker(claim, key, agent))
+
+  async def _node_claim_worker(self, claim: am.Claim, key: ClaimKey, /, agent: Any):
+    try:
+      await claim.wait()
+      await claim.lost()
+    finally:
+      if claim.alive:
+        claim.destroy()
+
+      del self._claims[key]
+
+
   async def request(self, request, /, agent):
     match request["type"]:
       case "claim":
         node = self._host.root_node.find(request["nodePath"])
 
-        if node and isinstance(node, am.ValueNode) and node.writable and not ((key := (agent, node)) in self._claims):
-          claim1 = node.claim(agent, force=True)
-          self._claims[key] = claim1
+        assert isinstance(node, am.ValueNode)
+        assert node.writable
 
-          async def func():
-            try:
-              await claim1.wait()
-              await claim1.lost()
-            finally:
-              if claim1.alive:
-                claim1.destroy()
-
-              del self._claims[key]
-
-          agent.pool.start_soon(func())
+        self._claim_node(node, agent)
 
         return None
       case "listen":
@@ -49,20 +60,32 @@ class Executor(am.BaseExecutor):
       case "release":
         node = self._host.root_node.find(request["nodePath"])
 
-        if node and isinstance(node, am.ValueNode) and (claim2 := self._claims.get((agent, node))):
-          claim2.destroy()
-      case "set":
+        if node and isinstance(node, am.ValueNode) and (claim := self._claims.get((agent, node))):
+          claim.destroy()
+      case "write":
         node = self._host.root_node.find(request["nodePath"])
 
-        match node:
-          case am.NumericNode():
-            node.writer.set(Quantity(
-              dimensionality=node.context.dimensionality,
-              registry=am.ureg,
-              value=request["value"]
-            ))
-          case am.BooleanNode() | am.EnumNode():
-            node.writer.set(request["value"])
+        assert isinstance(node, am.ValueNode)
+        assert node.writable
+
+        self._claim_node(node, agent)
+
+        match request["value"]["type"]:
+          case "default":
+            value = request["value"]["innerValue"]
+
+            match node:
+              case am.NumericNode():
+                node.writer.write(Quantity(
+                  dimensionality=node.context.dimensionality,
+                  registry=am.ureg,
+                  value=value["magnitude"]
+                ))
+              case am.BooleanNode() | am.EnumNode():
+                node.writer.write(value)
+          case "null":
+            assert node.nullable
+            node.writer.write(am.Null)
 
   async def _listen(self):
     all_nodes = list(self._host.root_node.iter_all())
@@ -111,7 +134,7 @@ def export_node_state(node: am.BaseNode, /) -> object:
     }
 
     if node.writable:
-      owner = node.claimable.owner()
+      owner = node.writer.owner()
 
       state |= {
         "writer": {
