@@ -40,13 +40,10 @@ class Executor(am.BaseExecutor):
     self._optconfs: Optional[list[str]] = None
 
   async def start(self):
-    # if os.name != "nt":
-    #   raise Exception("NIS-Elements is only available on Windows")
+    if os.name != "nt":
+      raise Exception("NIS-Elements is only available on Windows")
 
-    # self._objectives, self._optconfs = await self.inspect()
-    self._objectives = ["Plan Apo λ 10x/0.45", "Plan Apo λ 20x/0.75", "Plan Apo λ 40x/0.95", "Plan Apo λ 60x/1.40 Oil", "Plan Apo λ 100x/1.45 Oil"]
-    self._optconfs = ["DIC", "Fluorescence"]
-
+    self._objectives, self._optconfs = await self.inspect()
     logger.debug(f"Found {len(self._objectives)} objectives and {len(self._optconfs)} optical configurations")
 
     yield
@@ -89,7 +86,9 @@ class Executor(am.BaseExecutor):
   async def capture(
     self,
     *,
+    chip_columns: int,
     chip_count: int,
+    chip_rows: int,
     exposure: float,
     objective: str,
     optconf: str,
@@ -112,8 +111,8 @@ class Executor(am.BaseExecutor):
       macro_capture,
       bounds_code=bounds_code,
       check_bounds=int(self._stage_bounds is not None),
-      chip_cols=48,
-      chip_rows=16,
+      chip_columns=chip_columns,
+      chip_rows=chip_rows,
       chip_count=chip_count,
       chip_point_count=(chip_count * 4),
       exposure=exposure,
@@ -121,10 +120,10 @@ class Executor(am.BaseExecutor):
       optconf=optconf,
       output_path=str(output_path)[:-4].replace("{}", "%i"),
       points_code=points_code,
-      set_points=int((chip_count > 1) or (self._last_capture_points is None) or not np.array_equal(self._last_capture_points, points)),
+      set_points=int((chip_count > 1) or (self._last_capture_points is None) or not np.array_equal(self._last_capture_points, offset_points)),
     )
 
-    self._last_capture_points = points
+    self._last_capture_points = offset_points
 
   async def inspect(self):
     import win32file

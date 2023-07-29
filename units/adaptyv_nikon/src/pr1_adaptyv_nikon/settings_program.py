@@ -20,8 +20,8 @@ class ProgramLocation(am.BaseProgramLocation):
       "pointsSaved": self.points_saved,
       "settings": self.settings and {
         "chipCount": self.settings.chip_count,
-        "gridColumns": self.settings.grid_columns,
-        "gridRows": self.settings.grid_rows
+        "gridColumns": self.settings.chip_columns,
+        "gridRows": self.settings.chip_rows
       }
     }
 
@@ -49,7 +49,7 @@ class Program(am.BaseProgram):
     self._send_location()
 
   async def requery(self):
-    assert self.points
+    assert self.points is not None
     assert self.settings
 
     points = await self._executor.requery(chip_count=self.settings.chip_count, points=self.points)
@@ -61,10 +61,12 @@ class Program(am.BaseProgram):
 
   def receive(self, message):
     match message["type"]:
-      case "queryPoints":
+      case "query":
         self._handle.master._pool.start_soon(self.query())
       case "requery":
         self._handle.master._pool.start_soon(self.requery())
+      case _:
+        return super().receive(message)
 
   def _send_location(self):
     self._handle.send_location(ProgramLocation(

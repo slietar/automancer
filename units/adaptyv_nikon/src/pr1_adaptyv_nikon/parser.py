@@ -13,9 +13,9 @@ from .capture_process import process
 
 
 class Settings(Protocol):
+  chip_columns: int
   chip_count: int
-  grid_columns: int
-  grid_rows: int
+  chip_rows: int
 
 class CaptureContextTransformer(am.BasePassiveTransformer):
   def __init__(self):
@@ -96,17 +96,18 @@ class Parser(am.BaseParser):
           ),
           'objective': am.Attribute(
             am.EnumType(*objectives),
-            description="The objective to use, such as `Plan Apo λ 10x/0.45`.",
+            description="The objective to use, such as `Plan Fluor 20x DIC N2`.",
             documentation=["Possible objectives:\n" + "\n".join(f"- `{objective}`" for objective in objectives)]
           ),
           'optconf': am.Attribute(
             am.EnumType(*optconfs),
-            description="The optical configuration to use, such as `DIC`.",
+            description="The optical configuration to use, such as `Kinetix - All Devices:FITC`.",
             documentation=["Possible optical configurations:\n" + "\n".join(f"- `{optconf}`" for optconf in optconfs)]
           ),
           'output': am.Attribute(
             am.PathType(),
-            description="The path to save the images to, usually with a .nd2 extension"
+            description="The path to save the images to, usually with a .nd2 extension, such as `images/chip{}.nd2`.",
+            documentation=["The path must include `{}` which will be replaced with the chip number, starting at 0, even if there is only a single chip."]
           ),
           'z_offset': am.Attribute(
             am.QuantityType('micrometer'),

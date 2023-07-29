@@ -10,7 +10,7 @@ int main() {
   int i, j;
 
 
-  cols = %(chip_cols)i;
+  cols = %(chip_columns)i;
   rows = %(chip_rows)i;
 
 %(bounds_code)s
