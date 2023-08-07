@@ -140,7 +140,20 @@ class App extends React.Component {
     return (
       <Application
         appBackend={this.appBackend}
-        hostSettings={this.state.hostSettings[this.hostSettingsId]}
+        hostSettings={{
+          id: 'a',
+          builtin: true,
+          hostId: null,
+          label: 'PC',
+          locked: false,
+          backendOptions: {
+            type: 'remote',
+            address: '127.0.0.1',
+            auth: null,
+            port: 4567,
+            secure: false
+          }
+        }}
         hostSettingsRecord={this.state.hostSettings} />
     );
   }

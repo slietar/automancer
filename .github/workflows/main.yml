@@ -1,0 +1,36 @@
+on: push
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Build the client
+        run: |
+          npm install
+          npm run build:css
+          npm run build:js
+        working-directory: client
+      - name: Build the server
+        run: |
+          python -m venv env
+          ./env/Scripts/activate
+          python setup.py install
+          pip install ../../host
+          pyinstaller --noconfirm main.spec
+          deactivate
+        working-directory: app/server
+      - name: Build and package the app
+        run: |
+          npm install
+          npm run build
+        working-directory: app/electron
+      - uses: actions/upload-artifact@v3
+        with:
+          name: build-windows
+          path: app/electron/out/make/squirrel.windows/x64/*Setup.exe

@@ -190,6 +190,11 @@ class CoreApplication {
 }
 
 async function main() {
+  if (require('electron-squirrel-startup')) {
+    app.quit();
+    return;
+  }
+
   let core = new CoreApplication(app);
 
   await core.initialize();
@@ -273,8 +278,7 @@ class InternalHost {
     this.process = childProcess.spawn(
       app.isPackaged
         ? path.join(process.resourcesPath, 'host/main')
-        : path.join(__dirname, '../tmp/host/main'),
-      ['--local']
+        : path.join(__dirname, '../tmp/host/main')
     );
 
     this.process.stderr.pipe(process.stderr);

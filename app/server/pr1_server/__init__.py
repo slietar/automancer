@@ -92,6 +92,11 @@ class App:
 
       conf_updated = True
 
+    conf['remote'] = {
+      'hostname': '127.0.0.1',
+      'port': 4567
+    }
+
 
     # Create authentication agents
 
